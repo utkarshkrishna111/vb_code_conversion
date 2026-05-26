@@ -7,54 +7,55 @@ pipeline:
   Step 2 — Test-Driven Development (parallel generation)
   Step 3 — Conversion & Closed-Loop Execution
 
-Escalates to the CLI when human judgment is required (complexity gate,
-architecture rejection, or exhausted retry budget).
+Each infrastructure service runs as a real MCP server subprocess connected
+via stdio transport. All four servers are kept alive for the full migration
+run inside an AsyncExitStack.
 """
 from __future__ import annotations
 
 import asyncio
+from contextlib import AsyncExitStack
 from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm, Prompt
 
 from config import Config
 from models.migration_state import (
     GlobalMigrationState,
+    MigrationRequest,
     ModuleState,
     ModuleStatus,
-    MigrationRequest,
 )
 from models.artifacts import (
     AnalysisResult,
-    MarkdownSpec,
     ArchitectureDesign,
-    TestSuite,
     ConversionResult,
+    MarkdownSpec,
+    TestSuite,
 )
 from state.migration_manager import MigrationManager
 
-from agents.step1.understand_agent import UnderstandAgent
-from agents.step1.document_agent import DocumentAgent
-from agents.step1.architect_agent import ArchitectAgent
-from agents.step1.ast_checker import ASTChecker
-from agents.step1.arch_auditor import ArchAuditor
+from agents.analyze_and_design.understand_agent import UnderstandAgent
+from agents.analyze_and_design.document_agent import DocumentAgent
+from agents.analyze_and_design.architect_agent import ArchitectAgent
+from agents.analyze_and_design.ast_checker import ASTChecker
+from agents.analyze_and_design.arch_auditor import ArchAuditor
 
-from agents.step2.functional_tests_agent import FunctionalTestsAgent
-from agents.step2.golden_master_agent import GoldenMasterAgent
-from agents.step2.test_auditor import TestAuditor
-from agents.step2.dry_run_runner import DryRunRunner
+from agents.build_test_execute.functional_tests_agent import FunctionalTestsAgent
+from agents.build_test_execute.golden_master_agent import GoldenMasterAgent
+from agents.build_test_execute.test_auditor import TestAuditor
+from agents.build_test_execute.dry_run_runner import DryRunRunner
 
-from agents.step3.converter_agent import ConverterAgent
-from agents.step3.mypy_checker import MypyChecker
-from agents.step3.pytest_runner import PytestRunner
+from agents.generate_code.converter_agent import ConverterAgent
+from agents.generate_code.mypy_checker import MypyChecker
+from agents.generate_code.pytest_runner import PytestRunner
 
-from mcp.filesystem_server import FileSystemServer
-from mcp.execution_server import ExecutionServer
-from mcp.vectordb_server import VectorDBServer
-from mcp.github_server import GitHubServer
+from infrastructure.clients.filesystem_client import FilesystemClient
+from infrastructure.clients.execution_client import ExecutionClient
+from infrastructure.clients.vectordb_client import VectorDBClient
+from infrastructure.clients.github_client import GitHubClient
 
 from utils.logger import get_logger
 
@@ -65,11 +66,11 @@ console = Console()
 class HubAgent:
     """Hub / Orchestrator — the single source of truth for the migration pipeline."""
 
-    def __init__(self):
-        self.fs: FileSystemServer | None = None
-        self.executor: ExecutionServer | None = None
-        self.vectordb = VectorDBServer(use_memory=True)
-        self.github = GitHubServer()
+    def __init__(self) -> None:
+        self.fs: FilesystemClient | None = None
+        self.executor: ExecutionClient | None = None
+        self.vectordb: VectorDBClient | None = None
+        self.github: GitHubClient | None = None
         self.manager: MigrationManager | None = None
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -77,8 +78,7 @@ class HubAgent:
     # ══════════════════════════════════════════════════════════════════════════
 
     async def run(self, request: MigrationRequest) -> None:
-        self._init_infra(request)
-        assert self.fs and self.executor and self.manager
+        request.output_dir.mkdir(parents=True, exist_ok=True)
 
         console.print(Panel.fit(
             f"[bold]Source:[/bold] {request.source_dir}\n"
@@ -88,27 +88,45 @@ class HubAgent:
             title="[bold blue]Migration Request[/bold blue]",
         ))
 
-        # Discover VB files
-        vb_files = self.fs.find_vb_files(request.source_dir)
-        if not vb_files:
-            console.print("[yellow]No VB files found. Exiting.[/yellow]")
-            return
-
-        console.print(f"\nFound [bold]{len(vb_files)}[/bold] VB file(s) to migrate.\n")
-
-        # Register modules in global state
-        for f in vb_files:
-            name = f.stem
-            self.manager.state.vb_source_files.append(str(f))
-            self.manager.state.modules[name] = ModuleState(
-                name=name, vb_file_path=str(f)
+        # Start all four MCP server processes and keep them alive for the
+        # entire migration run.
+        async with AsyncExitStack() as stack:
+            self.fs = await stack.enter_async_context(
+                FilesystemClient(request.output_dir)
             )
+            self.executor = await stack.enter_async_context(
+                ExecutionClient(request.output_dir)
+            )
+            self.vectordb = await stack.enter_async_context(
+                VectorDBClient(use_memory=True)
+            )
+            self.github = await stack.enter_async_context(GitHubClient())
 
-        # Process each module sequentially (parallelise if needed)
-        for module_state in list(self.manager.state.modules.values()):
-            await self._process_module(module_state, request)
+            # Initialise migration state
+            global_state = GlobalMigrationState(request=request)
+            self.manager = MigrationManager(global_state)
+            self.manager.set_state_file(request.output_dir / "migration_state.json")
+            self.manager.log("Migration pipeline initialised")
 
-        # Final summary
+            # Discover VB files via the filesystem MCP server
+            vb_files = await self.fs.find_vb_files(request.source_dir)
+            if not vb_files:
+                console.print("[yellow]No VB files found. Exiting.[/yellow]")
+                return
+
+            console.print(f"\nFound [bold]{len(vb_files)}[/bold] VB file(s) to migrate.\n")
+
+            for f in vb_files:
+                name = f.stem
+                self.manager.state.vb_source_files.append(str(f))
+                self.manager.state.modules[name] = ModuleState(
+                    name=name, vb_file_path=str(f)
+                )
+
+            for module_state in list(self.manager.state.modules.values()):
+                await self._process_module(module_state, request)
+
+        # Final summary (printed after all servers have shut down cleanly)
         s = self.manager.state
         console.print(Panel.fit(
             f"[green]Completed: {s.completed_modules}[/green]  "
@@ -129,16 +147,11 @@ class HubAgent:
         console.rule(f"[bold cyan]Module: {name}[/bold cyan]")
 
         try:
-            vb_source = self.fs.read_text(module_state.vb_file_path)
+            vb_source = await self.fs.read_text(module_state.vb_file_path)
 
-            # ── Step 1 ────────────────────────────────────────────────────────
-            analysis, spec, design = await self._step1(name, vb_source, module_state.vb_file_path, request)
-
-            # ── Step 2 ────────────────────────────────────────────────────────
-            test_suite = await self._step2(name, spec, design, request)
-
-            # ── Step 3 ────────────────────────────────────────────────────────
-            await self._step3(name, design, test_suite, request)
+            analysis, spec, design = await self._analyze_and_design(name, vb_source, module_state.vb_file_path, request)
+            test_suite = await self._build_test_execute(name, spec, design, request)
+            await self._generate_code(name, design, test_suite, request)
 
         except HumanRejectionError:
             self.manager.update_module_status(name, ModuleStatus.FAILED, "Rejected at human gate")
@@ -151,7 +164,7 @@ class HubAgent:
     # Step 1 — Discovery, Documentation & Architecture
     # ══════════════════════════════════════════════════════════════════════════
 
-    async def _step1(
+    async def _analyze_and_design(
         self,
         name: str,
         vb_source: str,
@@ -175,7 +188,7 @@ class HubAgent:
         console.print("  [cyan]Step 1-B[/cyan] Writing Markdown spec…")
         spec_path = str(request.output_dir / name / f"{name}_spec.md")
         spec = DocumentAgent().run(analysis, spec_path)
-        self.fs.write_text(spec_path, spec.content)
+        await self.fs.write_text(spec_path, spec.content)
         self.manager.add_artifact(name, "spec", spec_path)
         self.manager.update_module_status(name, ModuleStatus.DOCUMENTED)
 
@@ -183,7 +196,7 @@ class HubAgent:
         console.print("  [cyan]Step 1-C[/cyan] Designing Python architecture…")
         arch_path = str(request.output_dir / name / f"{name}_architecture.json")
         design = ArchitectAgent().run(analysis, spec, arch_path)
-        self.fs.write_json(arch_path, design.model_dump())
+        await self.fs.write_json(arch_path, design.model_dump())
         self.manager.add_artifact(name, "architecture", arch_path)
 
         # Validation B: Architecture audit
@@ -193,7 +206,7 @@ class HubAgent:
             for issue in audit_result.issues:
                 console.print(f"    [red]✗ Arch:[/red] {issue}")
 
-        # Human gate — triggered when complexity is high
+        # Human gate — triggered when complexity is high or audit failed
         if analysis.complexity_score >= request.complexity_threshold or not audit_result.passed:
             approved = self._human_gate(name, analysis, design, audit_result.issues)
             if not approved:
@@ -206,7 +219,7 @@ class HubAgent:
     # Step 2 — Test-Driven Development (parallel)
     # ══════════════════════════════════════════════════════════════════════════
 
-    async def _step2(
+    async def _build_test_execute(
         self,
         name: str,
         spec: MarkdownSpec,
@@ -220,22 +233,22 @@ class HubAgent:
         func_path = str(request.output_dir / name / f"test_{name}_functional.py")
         gm_path = str(request.output_dir / name / f"test_{name}_golden.py")
 
-        # Parallel: Functional Tests (2A) + Golden Master (2B)
+        # Parallel: Functional Tests (2-A) + Golden Master (2-B)
         functional, golden = await asyncio.gather(
             asyncio.to_thread(FunctionalTestsAgent().run, spec, design, func_path),
             asyncio.to_thread(GoldenMasterAgent().run, spec, gm_path),
         )
 
-        # Audit
+        # Audit — merge and improve both test suites
         console.print("  [magenta]Step 2 Audit[/magenta] Reviewing test suites…")
         merged_path = str(request.output_dir / name / f"test_{name}.py")
         merged_suite = TestAuditor().audit(functional, golden, merged_path)
-        self.fs.write_text(merged_path, merged_suite.test_code)
+        await self.fs.write_text(merged_path, merged_suite.test_code)
         self.manager.add_artifact(name, "test_suite", merged_path)
 
         # Dry run — validate syntax before any application code exists
         console.print("  [magenta]Step 2 Dry Run[/magenta] pytest --collect-only…")
-        dry_result = DryRunRunner(self.executor).run(merged_suite)
+        dry_result = await DryRunRunner(self.executor).run(merged_suite)
         if not dry_result.passed:
             console.print(f"  [yellow]Dry run issues:[/yellow] {dry_result.issues[:3]}")
 
@@ -246,7 +259,7 @@ class HubAgent:
     # Step 3 — Conversion & Closed-Loop Execution
     # ══════════════════════════════════════════════════════════════════════════
 
-    async def _step3(
+    async def _generate_code(
         self,
         name: str,
         design: ArchitectureDesign,
@@ -260,44 +273,45 @@ class HubAgent:
         previous_error: str | None = None
 
         for attempt in range(request.max_retries + 1):
-            # Convert
             label = "initial" if attempt == 0 else f"retry {attempt}/{request.max_retries}"
             console.print(f"  [green]Step 3[/green] Converting ({label})…")
 
-            conversion = ConverterAgent(self.vectordb).run(
+            conversion = await ConverterAgent(self.vectordb).run(
                 design, test_suite, py_path,
                 previous_error=previous_error,
                 retry_count=attempt,
             )
-            self.fs.write_text(py_path, conversion.python_code)
+            await self.fs.write_text(py_path, conversion.python_code)
             self.manager.add_artifact(name, "python_source", py_path)
 
-            # mypy
+            # mypy — fast type check before full pytest run
             console.print("  [green]Step 3[/green] mypy check…")
-            mypy_result = MypyChecker(self.executor).check(py_path, name)
+            mypy_result = await MypyChecker(self.executor).check(py_path, name)
             if not mypy_result.passed:
-                console.print(f"    [yellow]mypy issues ({len(mypy_result.issues)}):[/yellow] "
-                               f"{mypy_result.issues[:2]}")
+                console.print(
+                    f"    [yellow]mypy issues ({len(mypy_result.issues)}):[/yellow] "
+                    f"{mypy_result.issues[:2]}"
+                )
                 previous_error = f"mypy errors:\n{mypy_result.details}"
                 self.manager.increment_retry(name)
                 continue
 
-            # pytest
+            # pytest — full test suite
             console.print("  [green]Step 3[/green] Running pytest…")
-            test_result = PytestRunner(self.executor).run(test_suite.output_path, name)
+            test_result = await PytestRunner(self.executor).run(test_suite.output_path, name)
             if test_result.passed:
                 console.print(f"  [bold green]✓ {name} — all tests pass![/bold green]")
                 self.manager.update_module_status(name, ModuleStatus.COMPLETED)
-                self._on_success(name, design, conversion, test_result.details, request)
+                await self._on_success(name, design, conversion, test_result.details, request)
                 return
-            else:
-                previous_error = test_result.details
-                self.manager.increment_retry(name)
-                console.print(
-                    f"  [red]Tests failed (attempt {attempt + 1}/{request.max_retries + 1})[/red]"
-                )
 
-        # Exhausted retries → escalate to CLI
+            previous_error = test_result.details
+            self.manager.increment_retry(name)
+            console.print(
+                f"  [red]Tests failed (attempt {attempt + 1}/{request.max_retries + 1})[/red]"
+            )
+
+        # Retry budget exhausted — escalate to CLI
         console.print(f"  [bold red]✗ {name} — retry budget exhausted. Escalating to CLI.[/bold red]")
         self._escalate_to_cli(name, previous_error or "Unknown error")
         self.manager.update_module_status(name, ModuleStatus.FAILED, "Retry budget exhausted")
@@ -333,10 +347,10 @@ class HubAgent:
         Prompt.ask("Press Enter to acknowledge and continue to the next module")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # Post-success: save to DB, create PR
+    # Post-success: save to translation memory, create PR
     # ══════════════════════════════════════════════════════════════════════════
 
-    def _on_success(
+    async def _on_success(
         self,
         name: str,
         design: ArchitectureDesign,
@@ -344,16 +358,16 @@ class HubAgent:
         test_summary: str,
         request: MigrationRequest,
     ) -> None:
-        # Store pattern in translation memory
-        self.vectordb.store_pattern(
+        assert self.vectordb and self.github
+
+        await self.vectordb.store_pattern(
             vb_snippet=name,
             python_snippet=conversion.python_code[:500],
             description=f"Module: {name}",
         )
 
-        # Create GitHub PR
         py_path = Path(conversion.output_path)
-        pr_url = self.github.create_pr(
+        pr_url = await self.github.create_pr(
             module_name=name,
             python_file_path=py_path,
             python_code=conversion.python_code,
@@ -361,22 +375,6 @@ class HubAgent:
         )
         if pr_url:
             console.print(f"  [blue]PR created:[/blue] {pr_url}")
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # Infrastructure initialisation
-    # ══════════════════════════════════════════════════════════════════════════
-
-    def _init_infra(self, request: MigrationRequest) -> None:
-        request.output_dir.mkdir(parents=True, exist_ok=True)
-
-        self.fs = FileSystemServer(request.output_dir)
-        self.executor = ExecutionServer(request.output_dir)
-
-        global_state = GlobalMigrationState(request=request)
-        self.manager = MigrationManager(global_state)
-        state_file = request.output_dir / "migration_state.json"
-        self.manager.set_state_file(state_file)
-        self.manager.log("Migration pipeline initialised")
 
 
 class HumanRejectionError(Exception):

@@ -435,7 +435,9 @@
     </div>
 
     <div class="nav-group">
-      <div class="nav-group-label">Overview</div>
+      <div class="nav-group-label">Getting Started</div>
+      <a href="#machine-setup" class="nav-link"><span class="nav-icon">🖥️</span>Machine Setup</a>
+      <a href="#walkthrough" class="nav-link"><span class="nav-icon">🚶</span>Convert One Package</a>
       <a href="#overview" class="nav-link active"><span class="nav-icon">🏗</span>Architecture &amp; Design</a>
       <a href="#prerequisites" class="nav-link"><span class="nav-icon">⚙️</span>Prerequisites &amp; Setup</a>
     </div>
@@ -460,6 +462,7 @@
       <a href="#mcp" class="nav-link"><span class="nav-icon">🔌</span>MCP Servers</a>
       <a href="#output" class="nav-link"><span class="nav-icon">📦</span>Output Artifacts</a>
       <a href="#troubleshoot" class="nav-link"><span class="nav-icon">🔧</span>Troubleshooting</a>
+      <a href="#interactive" class="nav-link"><span class="nav-icon">🖱️</span>Making It Interactive</a>
     </div>
 
     <div class="audience-badge">
@@ -537,18 +540,18 @@
         </thead>
         <tbody>
           <tr><td><strong>Hub Agent</strong></td><td>All</td><td><code>agents/hub_agent.py</code></td><td>Central orchestrator — maintains global state, dispatches spoke agents, escalates to CLI</td></tr>
-          <tr><td>Understand Agent</td><td>1-A</td><td><code>agents/step1/understand_agent.py</code></td><td>Extracts business logic, data structures, COM calls, control flow into structured JSON</td></tr>
-          <tr><td>Document Agent</td><td>1-B</td><td><code>agents/step1/document_agent.py</code></td><td>Converts JSON analysis to a human-readable Markdown specification</td></tr>
-          <tr><td>Architect Agent</td><td>1-C</td><td><code>agents/step1/architect_agent.py</code></td><td>Designs Python dataclasses, type hints, module boundaries, public API</td></tr>
-          <tr><td>AST Checker</td><td>1 val</td><td><code>agents/step1/ast_checker.py</code></td><td>Regex-based validator — verifies all VB Sub/Function names were captured</td></tr>
-          <tr><td>Arch Auditor</td><td>1 val</td><td><code>agents/step1/arch_auditor.py</code></td><td>LLM reviewer — ensures architecture has no VB-isms, uses Python idioms</td></tr>
-          <tr><td>Functional Tests Agent</td><td>2-A ‖</td><td><code>agents/step2/functional_tests_agent.py</code></td><td>Writes pytest unit tests from the Markdown spec (runs in parallel with 2-B)</td></tr>
-          <tr><td>Golden Master Agent</td><td>2-B ‖</td><td><code>agents/step2/golden_master_agent.py</code></td><td>Creates characterisation tests from historical VB I/O data (or synthetic samples)</td></tr>
-          <tr><td>Test Auditor</td><td>2 val</td><td><code>agents/step2/test_auditor.py</code></td><td>Reviews &amp; merges both suites — removes trivial assertions, fills coverage gaps</td></tr>
-          <tr><td>Dry Run Runner</td><td>2 run</td><td><code>agents/step2/dry_run_runner.py</code></td><td>Runs <code>pytest --collect-only</code> — validates test syntax before any app code exists</td></tr>
-          <tr><td>Converter Agent</td><td>3-A</td><td><code>agents/step3/converter_agent.py</code></td><td>Writes Python application code; retries with pytest error output on failure</td></tr>
-          <tr><td>mypy Checker</td><td>3 val</td><td><code>agents/step3/mypy_checker.py</code></td><td>Runs <code>mypy --strict</code> on generated code before the full test suite</td></tr>
-          <tr><td>pytest Runner</td><td>3 run</td><td><code>agents/step3/pytest_runner.py</code></td><td>Executes the full merged test suite; routes failures back to Converter Agent</td></tr>
+          <tr><td>Understand Agent</td><td>1-A</td><td><code>agents/analyze_and_design/understand_agent.py</code></td><td>Extracts business logic, data structures, COM calls, control flow into structured JSON</td></tr>
+          <tr><td>Document Agent</td><td>1-B</td><td><code>agents/analyze_and_design/document_agent.py</code></td><td>Converts JSON analysis to a human-readable Markdown specification</td></tr>
+          <tr><td>Architect Agent</td><td>1-C</td><td><code>agents/analyze_and_design/architect_agent.py</code></td><td>Designs Python dataclasses, type hints, module boundaries, public API</td></tr>
+          <tr><td>AST Checker</td><td>1 val</td><td><code>agents/analyze_and_design/ast_checker.py</code></td><td>Regex-based validator — verifies all VB Sub/Function names were captured</td></tr>
+          <tr><td>Arch Auditor</td><td>1 val</td><td><code>agents/analyze_and_design/arch_auditor.py</code></td><td>LLM reviewer — ensures architecture has no VB-isms, uses Python idioms</td></tr>
+          <tr><td>Functional Tests Agent</td><td>2-A ‖</td><td><code>agents/build_test_execute/functional_tests_agent.py</code></td><td>Writes pytest unit tests from the Markdown spec (runs in parallel with 2-B)</td></tr>
+          <tr><td>Golden Master Agent</td><td>2-B ‖</td><td><code>agents/build_test_execute/golden_master_agent.py</code></td><td>Creates characterisation tests from historical VB I/O data (or synthetic samples)</td></tr>
+          <tr><td>Test Auditor</td><td>2 val</td><td><code>agents/build_test_execute/test_auditor.py</code></td><td>Reviews &amp; merges both suites — removes trivial assertions, fills coverage gaps</td></tr>
+          <tr><td>Dry Run Runner</td><td>2 run</td><td><code>agents/build_test_execute/dry_run_runner.py</code></td><td>Runs <code>pytest --collect-only</code> — validates test syntax before any app code exists</td></tr>
+          <tr><td>Converter Agent</td><td>3-A</td><td><code>agents/generate_code/converter_agent.py</code></td><td>Writes Python application code; retries with pytest error output on failure</td></tr>
+          <tr><td>mypy Checker</td><td>3 val</td><td><code>agents/generate_code/mypy_checker.py</code></td><td>Runs <code>mypy --strict</code> on generated code before the full test suite</td></tr>
+          <tr><td>pytest Runner</td><td>3 run</td><td><code>agents/generate_code/pytest_runner.py</code></td><td>Executes the full merged test suite; routes failures back to Converter Agent</td></tr>
         </tbody>
       </table>
 
@@ -735,7 +738,7 @@
           <div class="ps-num" style="background:var(--step1)">A</div>
           <div>
             <div class="ps-title">Understand Agent</div>
-            <div class="ps-sub">agents/step1/understand_agent.py · Model: claude-sonnet-4-6</div>
+            <div class="ps-sub">agents/analyze_and_design/understand_agent.py · Model: claude-sonnet-4-6</div>
           </div>
         </div>
         <div class="ps-body">
@@ -758,7 +761,7 @@
           <div class="ps-num" style="background:var(--step1)">B</div>
           <div>
             <div class="ps-title">Document Agent</div>
-            <div class="ps-sub">agents/step1/document_agent.py · Model: claude-sonnet-4-6</div>
+            <div class="ps-sub">agents/analyze_and_design/document_agent.py · Model: claude-sonnet-4-6</div>
           </div>
         </div>
         <div class="ps-body">
@@ -780,7 +783,7 @@
           <div class="ps-num" style="background:var(--step1)">C</div>
           <div>
             <div class="ps-title">Architect Agent</div>
-            <div class="ps-sub">agents/step1/architect_agent.py · Model: claude-sonnet-4-6</div>
+            <div class="ps-sub">agents/analyze_and_design/architect_agent.py · Model: claude-sonnet-4-6</div>
           </div>
         </div>
         <div class="ps-body">
@@ -804,7 +807,7 @@
           <div class="ps-num" style="background:#64748b; font-size:11px">VAL</div>
           <div>
             <div class="ps-title">AST Checker + Architecture Auditor</div>
-            <div class="ps-sub">agents/step1/ast_checker.py &amp; arch_auditor.py</div>
+            <div class="ps-sub">agents/analyze_and_design/ast_checker.py &amp; arch_auditor.py</div>
           </div>
         </div>
         <div class="ps-body">
@@ -921,7 +924,7 @@
           <div class="ps-num" style="background:#64748b; font-size:11px">AUD</div>
           <div>
             <div class="ps-title">Test Auditor</div>
-            <div class="ps-sub">agents/step2/test_auditor.py</div>
+            <div class="ps-sub">agents/build_test_execute/test_auditor.py</div>
           </div>
         </div>
         <div class="ps-body">
@@ -944,7 +947,7 @@
           <div class="ps-num" style="background:#1e293b; font-size:11px">RUN</div>
           <div>
             <div class="ps-title">Dry Run — pytest --collect-only</div>
-            <div class="ps-sub">agents/step2/dry_run_runner.py → Execution MCP</div>
+            <div class="ps-sub">agents/build_test_execute/dry_run_runner.py → Execution MCP</div>
           </div>
         </div>
         <div class="ps-body">
@@ -1004,7 +1007,7 @@
           <div class="ps-num" style="background:var(--step3)">1</div>
           <div>
             <div class="ps-title">Converter Agent</div>
-            <div class="ps-sub">agents/step3/converter_agent.py · Model: claude-sonnet-4-6</div>
+            <div class="ps-sub">agents/generate_code/converter_agent.py · Model: claude-sonnet-4-6</div>
           </div>
         </div>
         <div class="ps-body">
@@ -1025,7 +1028,7 @@
           <div class="ps-num" style="background:#1e293b; font-size:11px">CHK</div>
           <div>
             <div class="ps-title">mypy --strict</div>
-            <div class="ps-sub">agents/step3/mypy_checker.py → Execution MCP</div>
+            <div class="ps-sub">agents/generate_code/mypy_checker.py → Execution MCP</div>
           </div>
         </div>
         <div class="ps-body">
@@ -1052,7 +1055,7 @@ Found <span class="num">2</span> errors in <span class="num">1</span> file (chec
           <div class="ps-num" style="background:#1e293b; font-size:11px">RUN</div>
           <div>
             <div class="ps-title">pytest — Full Suite</div>
-            <div class="ps-sub">agents/step3/pytest_runner.py → Execution MCP</div>
+            <div class="ps-sub">agents/generate_code/pytest_runner.py → Execution MCP</div>
           </div>
         </div>
         <div class="ps-body">
@@ -1322,32 +1325,48 @@ ImportError while importing test file:
 
       <span class="tag tag-tech">🔧 Tech Team</span>
 
+      <div class="callout callout-info" style="margin-bottom:18px">
+        <div class="callout-icon">⚙️</div>
+        <div class="callout-body">
+          <div class="callout-title">Servers start automatically — no manual launch needed</div>
+          <div class="callout-text">
+            Each MCP server is a real <strong>stdio-transport MCP process</strong>. The Hub Agent spawns all four server
+            subprocesses at startup using an <code>AsyncExitStack</code> and shuts them down cleanly when the migration
+            run ends. You never need to start or stop them yourself — just run <code>python main.py …</code>.
+          </div>
+        </div>
+      </div>
+
       <table>
         <thead>
-          <tr><th>Server</th><th>File</th><th>Status</th><th>Configuration</th></tr>
+          <tr><th>Server</th><th>Server file</th><th>Client file</th><th>Status</th><th>Configuration</th></tr>
         </thead>
         <tbody>
           <tr>
             <td>📁 <strong>File System</strong></td>
-            <td><code>mcp/filesystem_server.py</code></td>
+            <td><code>infrastructure/servers/filesystem_server.py</code></td>
+            <td><code>infrastructure/clients/filesystem_client.py</code></td>
             <td><span style="color:#16a34a;font-weight:700">✓ Always active</span></td>
             <td>Configured with <code>output_dir</code> from CLI. No extra setup needed.</td>
           </tr>
           <tr>
             <td>💻 <strong>Host Execution</strong></td>
-            <td><code>mcp/execution_server.py</code></td>
+            <td><code>infrastructure/servers/execution_server.py</code></td>
+            <td><code>infrastructure/clients/execution_client.py</code></td>
             <td><span style="color:#16a34a;font-weight:700">✓ Always active</span></td>
             <td>Requires <code>pytest</code> and <code>mypy</code> in the active virtual environment.</td>
           </tr>
           <tr>
             <td>🗄️ <strong>Vector DB (Qdrant)</strong></td>
-            <td><code>mcp/vectordb_server.py</code></td>
+            <td><code>infrastructure/servers/vectordb_server.py</code></td>
+            <td><code>infrastructure/clients/vectordb_client.py</code></td>
             <td><span style="color:#b45309;font-weight:700">Optional</span></td>
-            <td>Set <code>QDRANT_URL</code> in <code>.env</code>. Without it, translation memory is disabled but pipeline continues.</td>
+            <td>Set <code>QDRANT_URL</code> in <code>.env</code>. Without it, in-memory mode is used automatically.</td>
           </tr>
           <tr>
             <td>🐙 <strong>GitHub</strong></td>
-            <td><code>mcp/github_server.py</code></td>
+            <td><code>infrastructure/servers/github_server.py</code></td>
+            <td><code>infrastructure/clients/github_client.py</code></td>
             <td><span style="color:#b45309;font-weight:700">Optional</span></td>
             <td>Set <code>GITHUB_TOKEN</code> + <code>GITHUB_REPO</code>. Without them, PR creation is skipped silently.</td>
           </tr>
@@ -1366,8 +1385,9 @@ ImportError while importing test file:
         <div class="callout-body">
           <div class="callout-title">In-memory Qdrant (no Docker)</div>
           <div class="callout-text">
-            If Qdrant is unavailable, <code>VectorDBServer</code> is initialised with <code>use_memory=True</code>
-            automatically. Translation memory works within a single run but is lost on exit. Set up a persistent
+            If Qdrant is unavailable, <code>VectorDBClient</code> connects to an in-memory Qdrant instance
+            (<code>use_memory=True</code>) automatically — no configuration change needed.
+            Translation memory works within a single run but is lost on exit. Set up a persistent
             Qdrant instance when migrating multiple modules across multiple sessions.
           </div>
         </div>
@@ -1518,6 +1538,409 @@ ImportError while importing test file:
           <div class="callout-title">A successful migration end-to-end</div>
           <div class="callout-text">
             When everything works, you will see: Step 1 PASS → Step 2 PASS (12 tests collected) → Step 3 mypy PASS → pytest 12 passed → ✓ Done → PR link printed. The module is in <code>output/{name}/{name}.py</code> ready for review.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ SECTION: Machine Setup ══════════════ -->
+    <section class="section" id="machine-setup">
+      <div class="section-header">
+        <div class="section-icon" style="background:#e0f2fe">🖥️</div>
+        <div>
+          <div class="section-title">Machine Setup — Step by Step</div>
+          <div class="section-desc">Everything you need to install and configure before running your first migration</div>
+        </div>
+      </div>
+
+      <span class="tag tag-tech">🔧 Tech Team</span>
+
+      <h2>Step 1 — Install Python 3.11+</h2>
+      <p>Check your current version and install if needed:</p>
+<pre><span class="prompt"># Check installed version</span>
+<span class="cmd">python3</span> --version
+<span class="comment"># Must print Python 3.11.x or higher</span>
+
+<span class="prompt"># macOS (Homebrew)</span>
+<span class="cmd">brew</span> install python@3.11
+
+<span class="prompt"># Ubuntu / Debian</span>
+<span class="cmd">sudo apt-get</span> install python3.11 python3.11-venv</pre>
+
+      <h2>Step 2 — Clone the Project</h2>
+<pre><span class="cmd">git</span> clone &lt;repo-url&gt; vb_code_conversion
+<span class="cmd">cd</span> vb_code_conversion</pre>
+
+      <h2>Step 3 — Create a Virtual Environment</h2>
+<pre><span class="cmd">python3</span> -m venv .venv
+<span class="cmd">source</span> .venv/bin/activate      <span class="comment"># Windows: .venv\Scripts\activate</span></pre>
+      <div class="callout callout-warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body">
+          <div class="callout-title">Always activate the venv first</div>
+          <div class="callout-text">All subsequent commands — including <code>python main.py</code>, <code>pytest</code>, and <code>mypy</code> — must run inside the activated virtual environment. The MCP servers are spawned as subprocesses and inherit the same environment.</div>
+        </div>
+      </div>
+
+      <h2>Step 4 — Install Dependencies</h2>
+<pre><span class="cmd">pip</span> install -r requirements.txt</pre>
+      <p>This installs: <code>anthropic</code>, <code>mcp</code>, <code>pydantic</code>, <code>rich</code>, <code>typer</code>, <code>qdrant-client</code>, <code>PyGithub</code>, <code>aiofiles</code>, <code>python-dotenv</code>, <code>mypy</code>, <code>pytest</code>.</p>
+
+      <h2>Step 5 — Create your <code>.env</code> file</h2>
+<pre><span class="cmd">cp</span> .env.example .env
+<span class="cmd">nano</span> .env        <span class="comment"># or any editor</span></pre>
+      <p>Minimum required content:</p>
+<pre><span class="flag">ANTHROPIC_API_KEY</span>=sk-ant-<span class="comment">…your key here…</span></pre>
+      <p>Optional extras:</p>
+<pre><span class="flag">GITHUB_TOKEN</span>=ghp_<span class="comment">…token…</span>
+<span class="flag">GITHUB_REPO</span>=myorg/myrepo
+<span class="flag">QDRANT_URL</span>=http://localhost:<span class="num">6333</span>
+<span class="flag">MAX_RETRIES</span>=<span class="num">3</span>
+<span class="flag">COMPLEXITY_THRESHOLD</span>=<span class="num">0.7</span></pre>
+
+      <h2>Step 6 — (Optional) Start Qdrant for Translation Memory</h2>
+      <p>Skip this step if you don't need persistent translation memory — the pipeline works fine in in-memory mode.</p>
+<pre><span class="cmd">docker</span> run -d -p <span class="num">6333</span>:<span class="num">6333</span> --name qdrant qdrant/qdrant</pre>
+
+      <h2>Step 7 — Verify Installation</h2>
+<pre><span class="cmd">python</span> main.py --help</pre>
+      <p>Expected output:</p>
+<pre><span class="kw">Usage:</span> main.py [OPTIONS] SOURCE_DIR
+
+  VB → Python Migration Orchestrator
+
+<span class="kw">Arguments:</span>
+  SOURCE_DIR  Directory containing VB source files  [required]
+
+<span class="kw">Options:</span>
+  <span class="flag">--out</span>        TEXT     Output directory  [default: output]
+  <span class="flag">--retries</span>    INTEGER  Max self-correction retries  [default: 3]
+  <span class="flag">--threshold</span>  FLOAT    Complexity gate threshold  [default: 0.7]
+  <span class="flag">--help</span>               Show this message and exit.</pre>
+
+      <h2>Step 8 — Run a Smoke Test with the Sample</h2>
+<pre><span class="cmd">python</span> main.py sample_vb/ --out output/ --retries <span class="num">2</span></pre>
+      <p>You should see progress panels for each of the 3 steps. A successful run ends with the green completion panel showing <code>Completed: 1</code>.</p>
+
+      <div class="callout callout-success">
+        <div class="callout-icon">✅</div>
+        <div class="callout-body">
+          <div class="callout-title">Setup complete</div>
+          <div class="callout-text">Your machine is ready. All four MCP server processes (filesystem, execution, vectordb, github) are started automatically each time you run <code>main.py</code> — you never need to manage them manually.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ SECTION: Walkthrough ══════════════ -->
+    <section class="section" id="walkthrough">
+      <div class="section-header">
+        <div class="section-icon" style="background:#f3e8ff">🚶</div>
+        <div>
+          <div class="section-title">Converting One Package — End-to-End Walkthrough</div>
+          <div class="section-desc">A concrete example using <code>InvoiceCalculator.bas</code> — what happens at each stage and when to review</div>
+        </div>
+      </div>
+
+      <p>
+        <span class="tag tag-biz">🎓 Stakeholders</span>
+        This section walks you through what happens when you migrate a single VB module. Each sub-section shows what the system produces, what you should review, and who calls what next.
+      </p>
+
+      <h2>Launch the Migration</h2>
+<pre><span class="cmd">python</span> main.py path/to/vb_project/ --out output/ --threshold <span class="num">0.7</span> --retries <span class="num">3</span></pre>
+      <p>The Hub Agent starts all MCP servers, scans for VB files, and begins processing each module in sequence.</p>
+
+      <!-- Stage 1-A -->
+      <div class="pipeline-step">
+        <div class="ps-header">
+          <div class="ps-num" style="background:var(--step1)">1A</div>
+          <div>
+            <div class="ps-title">Stage 1-A: Understand the VB Code</div>
+            <div class="ps-sub">Called by: hub_agent.py → _step1() → UnderstandAgent().run()</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <p>The <strong>UnderstandAgent</strong> reads <code>InvoiceCalculator.bas</code> and produces a structured JSON analysis — all procedures, data structures, COM calls, and a complexity score.</p>
+          <div class="callout callout-info">
+            <div class="callout-icon">👁️</div>
+            <div class="callout-body">
+              <div class="callout-title">Human Review Point — Understand Output</div>
+              <div class="callout-text">
+                The analysis is <em>not</em> written to a file you can read directly, but you will see the complexity score printed on screen. If the score seems wrong (e.g. a trivial module scores 0.9), the cause is usually unusual VB idioms. You can inspect the raw analysis by adding a <code>console.print(analysis.model_dump_json(indent=2))</code> call in <code>hub_agent.py:_step1()</code> temporarily.
+              </div>
+            </div>
+          </div>
+          <p><strong>What to call next:</strong> Nothing — the Hub Agent proceeds automatically to Stage 1-B. The AST Checker runs silently and logs any missing procedures as warnings.</p>
+        </div>
+      </div>
+
+      <!-- Stage 1-B -->
+      <div class="pipeline-step">
+        <div class="ps-header">
+          <div class="ps-num" style="background:var(--step1)">1B</div>
+          <div>
+            <div class="ps-title">Stage 1-B: Write the Markdown Spec</div>
+            <div class="ps-sub">Called by: hub_agent.py → _step1() → DocumentAgent().run()</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <p>The <strong>DocumentAgent</strong> converts the JSON analysis into a human-readable Markdown specification.</p>
+          <div class="artifact-grid">
+            <div class="artifact-card">
+              <div class="artifact-path">output/InvoiceCalculator/InvoiceCalculator_spec.md</div>
+              <div class="artifact-desc">Plain-English specification: business rules, inputs/outputs table, error conditions, migration notes. Written to disk by the File System MCP.</div>
+            </div>
+          </div>
+          <div class="callout callout-warn">
+            <div class="callout-icon">📋</div>
+            <div class="callout-body">
+              <div class="callout-title">Human Review Point — Markdown Spec</div>
+              <div class="callout-text">
+                <strong>Open <code>output/InvoiceCalculator/InvoiceCalculator_spec.md</code> in your editor.</strong><br>
+                Check: (1) the numbered business rules are accurate, (2) all VB-specific idioms are noted (GoTo, On Error, static vars),
+                (3) the inputs/outputs table has a row for every public Sub/Function.<br>
+                If a rule is wrong, edit the spec file directly — the Test Auditor in Step 2 reads this spec to fill coverage gaps.
+              </div>
+            </div>
+          </div>
+          <p><strong>What to call next:</strong> Nothing — the Hub Agent proceeds automatically to Stage 1-C. If you edited the spec, re-save and press Enter in the terminal (the pipeline has already moved on; edits are picked up by Step 2 which re-reads the file from disk).</p>
+        </div>
+      </div>
+
+      <!-- Stage 1-C -->
+      <div class="pipeline-step">
+        <div class="ps-header">
+          <div class="ps-num" style="background:var(--step1)">1C</div>
+          <div>
+            <div class="ps-title">Stage 1-C: Design the Python Architecture</div>
+            <div class="ps-sub">Called by: hub_agent.py → _step1() → ArchitectAgent().run()</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <p>The <strong>ArchitectAgent</strong> produces a detailed JSON blueprint: dataclasses, type-annotated public API signatures, dependency injection points, and module boundaries.</p>
+          <div class="artifact-grid">
+            <div class="artifact-card">
+              <div class="artifact-path">output/InvoiceCalculator/InvoiceCalculator_architecture.json</div>
+              <div class="artifact-desc">Architecture blueprint — dataclasses, public_api list with full signatures, design_notes, dependency_injection list.</div>
+            </div>
+          </div>
+          <div class="callout callout-warn">
+            <div class="callout-icon">🏛️</div>
+            <div class="callout-body">
+              <div class="callout-title">Human Gate — Architecture Review (may trigger automatically)</div>
+              <div class="callout-text">
+                The <strong>Arch Auditor</strong> reviews the architecture with Claude. If it finds problems (<code>passed: false</code>)
+                <em>or</em> the complexity score is ≥ your threshold, the pipeline <strong>pauses</strong> and shows you:<br><br>
+                &bull; Complexity score<br>
+                &bull; List of auditor issues<br><br>
+                You are asked: <em>"Approve this architecture and continue? [y/n]"</em><br><br>
+                <strong>Type <code>y</code></strong> to proceed to Step 2.<br>
+                <strong>Type <code>n</code></strong> to skip this module (it is marked FAILED — you can fix the VB source or the architecture JSON and re-run).<br><br>
+                To edit the architecture before approving: open <code>output/InvoiceCalculator/InvoiceCalculator_architecture.json</code>, fix the <code>public_api</code> entries or <code>design_notes</code>, save, then type <code>y</code>.
+              </div>
+            </div>
+          </div>
+          <p><strong>What to call next (if you reject):</strong> Edit the architecture JSON or the VB source, then re-run the pipeline with <code>python main.py tmp_single/ --out output/</code> pointing to just this module.</p>
+        </div>
+      </div>
+
+      <!-- Stage 2 -->
+      <div class="pipeline-step">
+        <div class="ps-header">
+          <div class="ps-num" style="background:var(--step2)">2</div>
+          <div>
+            <div class="ps-title">Stage 2: Generate &amp; Audit Tests (parallel)</div>
+            <div class="ps-sub">Called by: hub_agent.py → _step2() → asyncio.gather(FunctionalTestsAgent, GoldenMasterAgent) → TestAuditor → DryRunRunner</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <p>Two test agents run simultaneously, their outputs are merged by the Test Auditor, and the merged file is validated with <code>pytest --collect-only</code>.</p>
+          <div class="artifact-grid">
+            <div class="artifact-card">
+              <div class="artifact-path">output/InvoiceCalculator/test_InvoiceCalculator.py</div>
+              <div class="artifact-desc">Merged test suite — functional tests from the spec + golden master tests from I/O data. Validated by dry run before Step 3.</div>
+            </div>
+          </div>
+          <div class="callout callout-warn">
+            <div class="callout-icon">🧪</div>
+            <div class="callout-body">
+              <div class="callout-title">Human Review Point — Test Suite</div>
+              <div class="callout-text">
+                <strong>Open <code>output/InvoiceCalculator/test_InvoiceCalculator.py</code></strong><br>
+                Check: (1) at least one <code>def test_…</code> per numbered business rule in the spec, (2) boundary values covered, (3) <code>pytest.raises</code> for error conditions, (4) no <code>assert True</code> placeholders.<br><br>
+                You can add or edit tests directly in this file. Changes are picked up by the Converter Agent in Step 3.
+              </div>
+            </div>
+          </div>
+          <p><strong>What to call next:</strong> Nothing — the Hub Agent proceeds automatically to Stage 3. The dry run result is logged; if collection errors appear, they are non-blocking warnings.</p>
+        </div>
+      </div>
+
+      <!-- Stage 3 -->
+      <div class="pipeline-step">
+        <div class="ps-header">
+          <div class="ps-num" style="background:var(--step3)">3</div>
+          <div>
+            <div class="ps-title">Stage 3: Convert &amp; Self-Correct</div>
+            <div class="ps-sub">Called by: hub_agent.py → _step3() → ConverterAgent → MypyChecker → PytestRunner (closed loop, up to MAX_RETRIES)</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <p>The Converter generates Python code, mypy validates types, pytest validates behaviour. On failure, the error output is fed back to the Converter for self-correction.</p>
+          <div class="artifact-grid">
+            <div class="artifact-card">
+              <div class="artifact-path">output/InvoiceCalculator/InvoiceCalculator.py</div>
+              <div class="artifact-desc">Final migrated Python module — fully type-annotated, all tests pass, ready for your target repository.</div>
+            </div>
+          </div>
+          <div class="callout callout-success">
+            <div class="callout-icon">✅</div>
+            <div class="callout-body">
+              <div class="callout-title">Happy path — all tests pass on first attempt</div>
+              <div class="callout-text">
+                Console shows: <code>mypy PASS → pytest N passed → ✓ InvoiceCalculator — all tests pass!</code><br>
+                The pattern is saved to translation memory and a GitHub PR is created (if configured).
+              </div>
+            </div>
+          </div>
+          <div class="callout callout-danger">
+            <div class="callout-icon">🔄</div>
+            <div class="callout-body">
+              <div class="callout-title">Retry budget exhausted — Escalation to CLI</div>
+              <div class="callout-text">
+                If all retries fail, the terminal pauses with the last error and a prompt:<br>
+                <em>"Press Enter to acknowledge and continue to the next module"</em><br><br>
+                At this point you can:<br>
+                &bull; Press Enter to skip and continue with other modules<br>
+                &bull; Open the generated <code>.py</code> file, fix it manually, then re-run Step 3 only by calling:<br>
+                <code>python -c "import asyncio; from agents.generate_code.converter_agent import ConverterAgent; ..."</code><br>
+                (see <a href="#troubleshoot">Troubleshooting</a> for the full recipe)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <h2>End-to-End Timeline Summary</h2>
+      <table>
+        <thead><tr><th>#</th><th>Stage</th><th>Entry point in code</th><th>Output artifact</th><th>Human action?</th></tr></thead>
+        <tbody>
+          <tr><td>1A</td><td>Understand VB</td><td><code>UnderstandAgent().run(vb_source, name, path)</code></td><td>In-memory <code>AnalysisResult</code></td><td>No (watch complexity score)</td></tr>
+          <tr><td>1B</td><td>Write Markdown spec</td><td><code>DocumentAgent().run(analysis, spec_path)</code></td><td><code>{module}_spec.md</code></td><td>Review &amp; optionally edit spec</td></tr>
+          <tr><td>1C</td><td>Design architecture</td><td><code>ArchitectAgent().run(analysis, spec, arch_path)</code></td><td><code>{module}_architecture.json</code></td><td>Gate: approve/reject architecture</td></tr>
+          <tr><td>2</td><td>Generate tests (parallel)</td><td><code>asyncio.gather(FunctionalTestsAgent, GoldenMasterAgent)</code></td><td><code>test_{module}.py</code></td><td>Review &amp; optionally edit tests</td></tr>
+          <tr><td>3</td><td>Convert &amp; verify loop</td><td><code>ConverterAgent(vectordb).run(design, test_suite, py_path)</code></td><td><code>{module}.py</code></td><td>Only if escalated (retries exhausted)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ══════════════ SECTION: Interactive ══════════════ -->
+    <section class="section" id="interactive">
+      <div class="section-header">
+        <div class="section-icon" style="background:#fef9c3">🖱️</div>
+        <div>
+          <div class="section-title">Making the Tool Interactive</div>
+          <div class="section-desc">Options for adding a UI, step-by-step wizard, or dashboard to the pipeline</div>
+        </div>
+      </div>
+
+      <p>
+        The pipeline currently runs as a headless CLI. Three approaches add progressively richer interactivity — choose based on your team's comfort and the project's scope.
+      </p>
+
+      <h2>Option A — Streamlit Dashboard (Recommended for teams)</h2>
+      <p>A Streamlit app can drive the Hub Agent step-by-step, showing artifacts in real time and collecting human-gate decisions through UI forms instead of terminal prompts.</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-icon">📊</div>
+          <div class="card-title">Module Status Board</div>
+          <div class="card-desc">Live grid showing each VB file → status (Analyzing / Documented / Converting / Done / Failed). Colour-coded, refreshes every 2 s via <code>st.rerun()</code>.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">👁️</div>
+          <div class="card-title">Inline Spec &amp; Arch Viewer</div>
+          <div class="card-desc">Click a module row to open its spec.md and architecture.json side-by-side. Renders Markdown natively with <code>st.markdown()</code>.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚠️</div>
+          <div class="card-title">Human Gate Dialog</div>
+          <div class="card-desc">Replace <code>rich.Confirm.ask()</code> with a <code>st.dialog</code> popup. The Hub Agent blocks on an <code>asyncio.Event</code> until the reviewer clicks Approve or Reject.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📝</div>
+          <div class="card-title">Editable Spec &amp; Tests</div>
+          <div class="card-desc">Render spec.md and test file in <code>st.text_area()</code> with a Save button. Write changes back via the File System MCP before proceeding.</div>
+        </div>
+      </div>
+
+<pre><span class="prompt"># Quick start — add streamlit to requirements and create app.py</span>
+<span class="cmd">pip</span> install streamlit
+<span class="comment"># In app.py:
+#   import asyncio, threading
+#   from agents.hub_agent import HubAgent
+#   from models.migration_state import MigrationRequest, GlobalMigrationState
+#
+#   hub = HubAgent()
+#   if st.button("Start Migration"):
+#       asyncio.run(hub.run(request))  # run pipeline in background thread</span></pre>
+
+      <h2>Option B — Step-by-Step CLI Wizard</h2>
+      <p>Keep the terminal but make each stage a confirmed step. Replace the automated <code>for module_state in modules</code> loop with an interactive prompt that shows the artifact before continuing.</p>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <div class="callout-title">How to implement it</div>
+          <div class="callout-text">
+            In <code>agents/hub_agent.py</code>, after each <code>await self.fs.write_text(spec_path, spec.content)</code>,
+            add a <code>rich.Confirm.ask(f"Step 1-B done. Open {spec_path} to review. Continue to Step 1-C?")</code>.
+            This turns the pipeline into a step-by-step wizard with a single-line change per stage.
+          </div>
+        </div>
+      </div>
+
+      <h2>Option C — Jupyter Notebook Driver</h2>
+      <p>For exploratory or one-off migrations, a notebook gives cell-by-cell control with full Python flexibility.</p>
+
+<pre><span class="comment"># Cell 1 — Setup</span>
+<span class="kw">import</span> asyncio
+<span class="kw">from</span> agents.analyze_and_design.understand_agent <span class="kw">import</span> UnderstandAgent
+<span class="kw">from</span> agents.analyze_and_design.document_agent <span class="kw">import</span> DocumentAgent
+<span class="kw">from</span> agents.analyze_and_design.architect_agent <span class="kw">import</span> ArchitectAgent
+<span class="kw">from</span> infrastructure.clients.filesystem_client <span class="kw">import</span> FilesystemClient
+
+<span class="comment"># Cell 2 — Read VB source</span>
+vb_source = open(<span class="str">"path/to/InvoiceCalculator.bas"</span>).read()
+
+<span class="comment"># Cell 3 — Understand</span>
+analysis = UnderstandAgent().run(vb_source, <span class="str">"InvoiceCalculator"</span>, <span class="str">"InvoiceCalculator.bas"</span>)
+<span class="kw">print</span>(f<span class="str">"Complexity: {analysis.complexity_score:.2f}"</span>)
+
+<span class="comment"># Cell 4 — Review analysis, then generate spec</span>
+spec = DocumentAgent().run(analysis, <span class="str">"output/InvoiceCalculator_spec.md"</span>)
+display(Markdown(spec.content))      <span class="comment"># renders in notebook</span>
+
+<span class="comment"># Cell 5 — Edit the spec in the cell above if needed, then architect</span>
+design = ArchitectAgent().run(analysis, spec, <span class="str">"output/InvoiceCalculator_arch.json"</span>)</pre>
+
+      <h2>Comparison</h2>
+      <table>
+        <thead><tr><th>Option</th><th>Best for</th><th>Effort to implement</th><th>Real-time feedback</th></tr></thead>
+        <tbody>
+          <tr><td><strong>A — Streamlit</strong></td><td>Teams, multiple reviewers, ongoing migrations</td><td>Medium (~200 lines)</td><td>Full dashboard with live refresh</td></tr>
+          <tr><td><strong>B — CLI Wizard</strong></td><td>Single engineer, familiar with terminal</td><td>Very low (~10 lines)</td><td>Terminal only</td></tr>
+          <tr><td><strong>C — Jupyter</strong></td><td>Exploratory use, one module at a time</td><td>Low (notebook cells)</td><td>Cell-by-cell with Markdown rendering</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <div class="callout-title">Human gate is already built in</div>
+          <div class="callout-text">
+            The architecture review gate (<code>HubAgent._human_gate()</code> in <code>agents/hub_agent.py:323</code>) already pauses the pipeline for human input. All three options above simply replace the <code>rich.Confirm.ask()</code> call with a richer input mechanism — the surrounding logic stays the same.
           </div>
         </div>
       </div>

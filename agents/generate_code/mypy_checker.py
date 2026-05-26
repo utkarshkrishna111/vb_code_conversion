@@ -1,10 +1,10 @@
 """
 Step 3 Validator-A · mypy Checker
 
-Runs mypy --strict on the generated Python file via the Execution MCP server.
+Runs mypy --strict on the generated Python file via the Execution MCP client.
 Catches type errors early, before the full pytest run.
 """
-from mcp.execution_server import ExecutionServer
+from infrastructure.clients.execution_client import ExecutionClient
 from models.artifacts import ValidationResult
 from utils.logger import get_logger
 
@@ -12,13 +12,13 @@ logger = get_logger("MypyChecker")
 
 
 class MypyChecker:
-    def __init__(self, executor: ExecutionServer):
+    def __init__(self, executor: ExecutionClient) -> None:
         self.executor = executor
 
-    def check(self, python_file_path: str, module_name: str) -> ValidationResult:
+    async def check(self, python_file_path: str, module_name: str) -> ValidationResult:
         logger.info(f"Running mypy on: {module_name}")
 
-        result = self.executor.run_mypy(python_file_path)
+        result = await self.executor.run_mypy(python_file_path)
 
         if result.passed:
             logger.info(f"[{module_name}] mypy PASS")

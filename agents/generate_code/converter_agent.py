@@ -2,33 +2,36 @@
 Step 3-A · Converter Agent
 
 Writes Python application code targeting the architecture blueprint and the
-full test suite.  On failure, receives formatted pytest error output and
+full test suite. On failure, receives formatted pytest error output and
 iterates until all tests pass or the retry budget is exhausted.
 """
+from __future__ import annotations
+
+from typing import Optional
+
 from agents.base_agent import BaseAgent
-from models.artifacts import ArchitectureDesign, TestSuite, ConversionResult
-from mcp.vectordb_server import VectorDBServer
+from infrastructure.clients.vectordb_client import VectorDBClient
+from models.artifacts import ArchitectureDesign, ConversionResult, TestSuite
 from utils.prompts import CONVERTER_SYSTEM
 
 
 class ConverterAgent(BaseAgent):
-    def __init__(self, vectordb: VectorDBServer | None = None):
+    def __init__(self, vectordb: Optional[VectorDBClient] = None) -> None:
         super().__init__("ConverterAgent")
         self.vectordb = vectordb
 
-    def run(
+    async def run(
         self,
         design: ArchitectureDesign,
         test_suite: TestSuite,
         output_path: str,
-        previous_error: str | None = None,
+        previous_error: Optional[str] = None,
         retry_count: int = 0,
     ) -> ConversionResult:
         attempt = f"attempt {retry_count + 1}" if retry_count > 0 else "initial"
         self.logger.info(f"Converting {design.module_name} ({attempt})")
 
-        # Retrieve similar patterns from translation memory
-        patterns_section = self._fetch_patterns(design.module_name)
+        patterns_section = await self._fetch_patterns(design.module_name)
 
         error_section = ""
         if previous_error:
@@ -70,12 +73,10 @@ class ConverterAgent(BaseAgent):
             retry_count=retry_count,
         )
 
-    # ── Private ───────────────────────────────────────────────────────────────
-
-    def _fetch_patterns(self, module_name: str) -> str:
+    async def _fetch_patterns(self, module_name: str) -> str:
         if not self.vectordb:
             return ""
-        patterns = self.vectordb.search_patterns(module_name)
+        patterns = await self.vectordb.search_patterns(module_name)
         if not patterns:
             return ""
         lines = ["\n\n## Translation Memory — Similar Patterns"]
