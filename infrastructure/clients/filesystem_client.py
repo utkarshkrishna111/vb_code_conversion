@@ -36,6 +36,6 @@ class FilesystemClient(BaseMCPClient):
         raw = await self._call("list_files", pattern=pattern)
         return json.loads(raw)
 
-    async def find_vb_files(self, source_dir: str | Path) -> list[Path]:
-        raw = await self._call("find_vb_files", source_dir=str(source_dir))
+    async def find_java_files(self, source_dir: str | Path) -> list[Path]:
+        raw = await self._call("find_java_files", source_dir=str(source_dir))
         return [Path(p) for p in json.loads(raw)]

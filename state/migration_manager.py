@@ -54,7 +54,7 @@ class MigrationManager:
         return [m for m in self.state.modules.values() if m.status == ModuleStatus.PENDING]
 
     def get_artifact_path(self, module_name: str, artifact_type: str) -> Optional[str]:
-        return self.state.modules.get(module_name, ModuleState(name="", vb_file_path="")).artifacts.get(artifact_type)
+        return self.state.modules.get(module_name, ModuleState(name="", source_file_path="")).artifacts.get(artifact_type)
 
     # ── Logging ───────────────────────────────────────────────────────────────
 

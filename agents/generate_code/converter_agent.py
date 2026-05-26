@@ -47,7 +47,7 @@ class ConverterAgent(BaseAgent):
                 {
                     "role": "user",
                     "content": (
-                        f"Convert this VB module to Python.\n\n"
+                        f"Convert this Java module to Python.\n\n"
                         "## Architecture Blueprint (JSON)\n"
                         f"```json\n{design.model_dump_json(indent=2)}\n```\n\n"
                         "## Full Test Suite\n"
@@ -83,7 +83,7 @@ class ConverterAgent(BaseAgent):
         for i, p in enumerate(patterns, 1):
             lines.append(
                 f"\n### Pattern {i}: {p.get('description', '')}\n"
-                f"**VB:**\n```vb\n{p.get('vb_snippet', '')}\n```\n"
+                f"**Java:**\n```java\n{p.get('java_snippet', '')}\n```\n"
                 f"**Python:**\n```python\n{p.get('python_snippet', '')}\n```"
             )
         return "\n".join(lines)

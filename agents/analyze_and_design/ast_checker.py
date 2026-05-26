@@ -1,9 +1,8 @@
 """
 Step 1 Validator-A · AST Checker
 
-Parses the VB source with a regex-based lexer to verify that all
-Sub/Function/Class/UDT definitions were captured in the AnalysisResult.
-Fails the step on unrecognised VB constructs.
+Parses the Java source with a regex-based lexer to verify that all
+class/interface/method definitions were captured in the AnalysisResult.
 """
 import re
 from models.artifacts import AnalysisResult, ValidationResult
@@ -11,36 +10,48 @@ from utils.logger import get_logger
 
 logger = get_logger("ASTChecker")
 
-# Patterns for top-level VB constructs
-_SUB_RE = re.compile(r"^\s*(Public|Private|Friend)?\s*Sub\s+(\w+)", re.MULTILINE | re.IGNORECASE)
-_FUNC_RE = re.compile(r"^\s*(Public|Private|Friend)?\s*Function\s+(\w+)", re.MULTILINE | re.IGNORECASE)
-_CLASS_RE = re.compile(r"^\s*Class\s+(\w+)", re.MULTILINE | re.IGNORECASE)
-_TYPE_RE = re.compile(r"^\s*Type\s+(\w+)", re.MULTILINE | re.IGNORECASE)
-_GOTO_RE = re.compile(r"\bGoTo\b", re.IGNORECASE)
-_ON_ERR_RE = re.compile(r"\bOn\s+Error\b", re.IGNORECASE)
+# Patterns for top-level Java constructs
+_METHOD_RE = re.compile(
+    r"^\s*(public|private|protected|static|final|synchronized|abstract|\s)+"
+    r"[\w<>\[\],\s]+\s+(\w+)\s*\(",
+    re.MULTILINE,
+)
+_CLASS_RE = re.compile(
+    r"^\s*(public|private|protected|abstract|final|\s)*\s+class\s+(\w+)",
+    re.MULTILINE,
+)
+_INTERFACE_RE = re.compile(r"^\s*(public|private)?\s*interface\s+(\w+)", re.MULTILINE)
+_NULL_RETURN_RE = re.compile(r"\breturn\s+null\b")
+_INSTANCEOF_RE = re.compile(r"\binstanceof\b")
+_SYNC_RE = re.compile(r"\bsynchronized\b")
+_RAW_TYPE_RE = re.compile(r"\b(ArrayList|HashMap|HashSet|LinkedList)\s*[^<]")
 
 
 class ASTChecker:
-    def check(self, vb_source: str, analysis: AnalysisResult) -> ValidationResult:
+    def check(self, source: str, analysis: AnalysisResult) -> ValidationResult:
         issues: list[str] = []
         warnings: list[str] = []
 
-        # Collect names from source
-        src_subs = {m.group(2).lower() for m in _SUB_RE.finditer(vb_source)}
-        src_funcs = {m.group(2).lower() for m in _FUNC_RE.finditer(vb_source)}
-        src_procs = src_subs | src_funcs
+        # Collect method names found in source
+        src_methods = {m.group(2).lower() for m in _METHOD_RE.finditer(source)
+                       if m.group(2) not in ("if", "while", "for", "switch", "catch")}
 
         # Compare against what the Understand Agent captured
-        captured_procs = {p.split("(")[0].strip().lower() for p in analysis.control_flow.get("procedures", [])}
-        missing = src_procs - captured_procs
+        captured = {p.split("(")[0].strip().lower()
+                    for p in analysis.control_flow.get("methods", [])}
+        missing = src_methods - captured
         for name in sorted(missing):
-            issues.append(f"Procedure '{name}' found in source but not captured in analysis.")
+            issues.append(f"Method '{name}' found in source but not captured in analysis.")
 
-        # Flag unhandled VB idioms
-        if _GOTO_RE.search(vb_source):
-            warnings.append("Source contains GoTo — verify control-flow mapping is complete.")
-        if _ON_ERR_RE.search(vb_source):
-            warnings.append("Source contains 'On Error' — ensure error paths are modelled.")
+        # Flag Java idioms that need special migration attention
+        if _NULL_RETURN_RE.search(source):
+            warnings.append("Source contains 'return null' — verify Optional[T] handling in architecture.")
+        if _INSTANCEOF_RE.search(source):
+            warnings.append("Source contains instanceof — verify type-dispatch is modelled correctly.")
+        if _SYNC_RE.search(source):
+            warnings.append("Source contains synchronized — verify thread-safety model in Python design.")
+        if _RAW_TYPE_RE.search(source):
+            warnings.append("Source uses raw collection types — ensure generic equivalents are typed in Python.")
 
         passed = len(issues) == 0
         logger.info(

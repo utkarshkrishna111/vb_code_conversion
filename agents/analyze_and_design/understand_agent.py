@@ -1,8 +1,8 @@
 """
 Step 1-A · Understand Agent
 
-Extracts business logic, data structures, COM/API calls, and control flow
-from a VB source file.  Returns a structured AnalysisResult.
+Extracts business logic, data structures, external API calls, and control
+flow from a Java source file. Returns a structured AnalysisResult.
 """
 from pathlib import Path
 
@@ -15,7 +15,7 @@ class UnderstandAgent(BaseAgent):
     def __init__(self):
         super().__init__("UnderstandAgent")
 
-    def run(self, vb_source: str, module_name: str, vb_file_path: str) -> AnalysisResult:
+    def run(self, source_code: str, module_name: str, source_file_path: str) -> AnalysisResult:
         self.logger.info(f"Analysing module: {module_name}")
 
         response = self._call_llm(
@@ -24,8 +24,8 @@ class UnderstandAgent(BaseAgent):
                 {
                     "role": "user",
                     "content": (
-                        f"Analyse this Visual Basic module named '{module_name}'.\n\n"
-                        f"```vb\n{vb_source}\n```"
+                        f"Analyse this Java module named '{module_name}'.\n\n"
+                        f"```java\n{source_code}\n```"
                     ),
                 }
             ],
@@ -34,11 +34,11 @@ class UnderstandAgent(BaseAgent):
 
         data = self._parse_json(response)
         data["module_name"] = module_name
-        data["vb_file_path"] = vb_file_path
+        data["source_file_path"] = source_file_path
 
         result = AnalysisResult(**data)
         self.logger.info(
             f"[{module_name}] complexity={result.complexity_score:.2f}  "
-            f"procedures={len(result.control_flow.get('procedures', []))}"
+            f"methods={len(result.control_flow.get('methods', []))}"
         )
         return result

@@ -3,12 +3,12 @@ from typing import Optional
 
 
 class AnalysisResult(BaseModel):
-    """Output of the Understand Agent — structured representation of a VB module."""
+    """Output of the Understand Agent — structured representation of a Java module."""
     module_name: str
-    vb_file_path: str
+    source_file_path: str
     business_logic: list[str] = Field(default_factory=list)
     data_structures: list[dict] = Field(default_factory=list)
-    com_api_calls: list[str] = Field(default_factory=list)
+    external_api_calls: list[str] = Field(default_factory=list)
     control_flow: dict = Field(default_factory=dict)
     complexity_score: float = 0.0
     raw_summary: str = ""

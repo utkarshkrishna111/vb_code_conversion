@@ -83,8 +83,8 @@ class HubAgent:
         console.print(Panel.fit(
             f"[bold]Source:[/bold] {request.source_dir}\n"
             f"[bold]Output:[/bold] {request.output_dir}\n"
-            f"[bold]Max retries:[/bold] {request.max_retries}  "
-            f"[bold]Complexity gate:[/bold] {request.complexity_threshold}",
+            f"[bold]Max retries:[/bold] {request.max_retries}\n"
+            f"[bold]Human gates:[/bold] after every step (Step 1, Step 2, Step 3)",
             title="[bold blue]Migration Request[/bold blue]",
         ))
 
@@ -109,18 +109,18 @@ class HubAgent:
             self.manager.log("Migration pipeline initialised")
 
             # Discover VB files via the filesystem MCP server
-            vb_files = await self.fs.find_vb_files(request.source_dir)
-            if not vb_files:
-                console.print("[yellow]No VB files found. Exiting.[/yellow]")
+            java_files = await self.fs.find_java_files(request.source_dir)
+            if not java_files:
+                console.print("[yellow]No Java files found. Exiting.[/yellow]")
                 return
 
-            console.print(f"\nFound [bold]{len(vb_files)}[/bold] VB file(s) to migrate.\n")
+            console.print(f"\nFound [bold]{len(java_files)}[/bold] Java file(s) to migrate.\n")
 
-            for f in vb_files:
+            for f in java_files:
                 name = f.stem
-                self.manager.state.vb_source_files.append(str(f))
+                self.manager.state.source_files.append(str(f))
                 self.manager.state.modules[name] = ModuleState(
-                    name=name, vb_file_path=str(f)
+                    name=name, source_file_path=str(f)
                 )
 
             for module_state in list(self.manager.state.modules.values()):
@@ -147,9 +147,9 @@ class HubAgent:
         console.rule(f"[bold cyan]Module: {name}[/bold cyan]")
 
         try:
-            vb_source = await self.fs.read_text(module_state.vb_file_path)
+            source_code = await self.fs.read_text(module_state.source_file_path)
 
-            analysis, spec, design = await self._analyze_and_design(name, vb_source, module_state.vb_file_path, request)
+            analysis, spec, design = await self._analyze_and_design(name, source_code, module_state.source_file_path, request)
             test_suite = await self._build_test_execute(name, spec, design, request)
             await self._generate_code(name, design, test_suite, request)
 
@@ -167,19 +167,19 @@ class HubAgent:
     async def _analyze_and_design(
         self,
         name: str,
-        vb_source: str,
-        vb_file_path: str,
+        source_code: str,
+        source_file_path: str,
         request: MigrationRequest,
     ) -> tuple[AnalysisResult, MarkdownSpec, ArchitectureDesign]:
         assert self.fs and self.manager
         self.manager.update_module_status(name, ModuleStatus.ANALYZING)
 
         # 1-A: Understand
-        console.print("  [cyan]Step 1-A[/cyan] Understanding VB module…")
-        analysis = UnderstandAgent().run(vb_source, name, vb_file_path)
+        console.print("  [cyan]Step 1-A[/cyan] Understanding Java module…")
+        analysis = UnderstandAgent().run(source_code, name, source_file_path)
 
         # Validation A: AST check
-        ast_result = ASTChecker().check(vb_source, analysis)
+        ast_result = ASTChecker().check(source_code, analysis)
         if not ast_result.passed:
             for issue in ast_result.issues:
                 console.print(f"    [yellow]⚠ AST:[/yellow] {issue}")
@@ -206,11 +206,31 @@ class HubAgent:
             for issue in audit_result.issues:
                 console.print(f"    [red]✗ Arch:[/red] {issue}")
 
-        # Human gate — triggered when complexity is high or audit failed
-        if analysis.complexity_score >= request.complexity_threshold or not audit_result.passed:
-            approved = self._human_gate(name, analysis, design, audit_result.issues)
-            if not approved:
-                raise HumanRejectionError(name)
+        # Human gate — always required after Step 1
+        audit_status = "[green]PASS[/green]" if audit_result.passed else "[red]FAIL[/red]"
+        ast_summary = (
+            "\n".join(f"  • {i}" for i in ast_result.issues[:5])
+            if ast_result.issues else "  None"
+        )
+        arch_issues = (
+            "\n".join(f"  • {i}" for i in audit_result.issues[:5])
+            if audit_result.issues else "  None"
+        )
+        approved = self._human_gate(
+            title="Step 1 Complete — Analysis, Spec & Architecture",
+            body=(
+                f"Module: [bold]{name}[/bold]\n"
+                f"Complexity score: [bold]{analysis.complexity_score:.2f}[/bold]\n\n"
+                f"Spec written to:          {spec_path}\n"
+                f"Architecture written to:  {arch_path}\n\n"
+                f"AST issues:        {ast_summary}\n"
+                f"Architecture audit: {audit_status}\n"
+                + (f"  Issues:\n{arch_issues}" if audit_result.issues else "")
+            ),
+            question="Approve spec & architecture? Proceed to test generation?",
+        )
+        if not approved:
+            raise HumanRejectionError(name)
 
         self.manager.update_module_status(name, ModuleStatus.ARCHITECTED)
         return analysis, spec, design
@@ -249,8 +269,28 @@ class HubAgent:
         # Dry run — validate syntax before any application code exists
         console.print("  [magenta]Step 2 Dry Run[/magenta] pytest --collect-only…")
         dry_result = await DryRunRunner(self.executor).run(merged_suite)
+        dry_status = "[green]PASS[/green]" if dry_result.passed else "[yellow]WARN — syntax issues[/yellow]"
         if not dry_result.passed:
             console.print(f"  [yellow]Dry run issues:[/yellow] {dry_result.issues[:3]}")
+
+        # Human gate — always required after Step 2
+        dry_issues = (
+            "\n".join(f"  • {i}" for i in dry_result.issues[:5])
+            if dry_result.issues else ""
+        )
+        approved = self._human_gate(
+            title="Step 2 Complete — Test Suite",
+            body=(
+                f"Module: [bold]{name}[/bold]\n"
+                f"Tests generated: [bold]{merged_suite.test_count}[/bold]\n"
+                f"Test file: {merged_path}\n"
+                f"Dry run: {dry_status}\n"
+                + (f"\n  {dry_issues}" if dry_issues else "")
+            ),
+            question="Approve test suite? Proceed to code generation?",
+        )
+        if not approved:
+            raise HumanRejectionError(name)
 
         self.manager.update_module_status(name, ModuleStatus.TESTS_GENERATED)
         return merged_suite
@@ -301,6 +341,22 @@ class HubAgent:
             test_result = await PytestRunner(self.executor).run(test_suite.output_path, name)
             if test_result.passed:
                 console.print(f"  [bold green]✓ {name} — all tests pass![/bold green]")
+
+                # Human gate — always required after Step 3
+                approved = self._human_gate(
+                    title="Step 3 Complete — Generated Python Code",
+                    body=(
+                        f"Module: [bold]{name}[/bold]\n"
+                        f"Python file: {py_path}\n"
+                        f"Retries used: [bold]{attempt}[/bold] / {request.max_retries}\n"
+                        f"Tests: [green]ALL PASS[/green]\n\n"
+                        f"Approving will save the pattern to translation memory and create a PR."
+                    ),
+                    question="Approve generated code? Create PR and mark as completed?",
+                )
+                if not approved:
+                    raise HumanRejectionError(name)
+
                 self.manager.update_module_status(name, ModuleStatus.COMPLETED)
                 await self._on_success(name, design, conversion, test_result.details, request)
                 return
@@ -320,22 +376,13 @@ class HubAgent:
     # Human-in-the-loop helpers
     # ══════════════════════════════════════════════════════════════════════════
 
-    def _human_gate(
-        self,
-        name: str,
-        analysis: AnalysisResult,
-        design: ArchitectureDesign,
-        audit_issues: list[str],
-    ) -> bool:
+    def _human_gate(self, title: str, body: str, question: str) -> bool:
         console.print(Panel(
-            f"[bold yellow]Human Gate triggered for module: {name}[/bold yellow]\n\n"
-            f"Complexity score: [bold]{analysis.complexity_score:.2f}[/bold]\n"
-            f"Architecture issues: {len(audit_issues)}\n"
-            + ("\n".join(f"  • {i}" for i in audit_issues[:5])),
-            title="[bold red]⚠ Human Review Required[/bold red]",
-            border_style="red",
+            body,
+            title=f"[bold yellow]⚠ Human Review — {title}[/bold yellow]",
+            border_style="yellow",
         ))
-        return Confirm.ask("Approve this architecture and continue?")
+        return Confirm.ask(question)
 
     def _escalate_to_cli(self, name: str, error: str) -> None:
         console.print(Panel(
@@ -361,7 +408,7 @@ class HubAgent:
         assert self.vectordb and self.github
 
         await self.vectordb.store_pattern(
-            vb_snippet=name,
+            java_snippet=name,
             python_snippet=conversion.python_code[:500],
             description=f"Module: {name}",
         )

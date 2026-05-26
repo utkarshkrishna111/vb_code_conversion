@@ -80,8 +80,8 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
-            name="find_vb_files",
-            description="Recursively find all VB source files (.vb .bas .cls .frm .vbs) under a directory.",
+            name="find_java_files",
+            description="Recursively find all Java source files (.java) under a directory.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -122,10 +122,9 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
         files = [str(p) for p in _base_dir.glob(pattern) if p.is_file()]
         return [types.TextContent(type="text", text=json.dumps(files))]
 
-    if name == "find_vb_files":
+    if name == "find_java_files":
         source_dir = Path(args["source_dir"])
-        exts = {".vb", ".bas", ".cls", ".frm", ".vbs"}
-        found = [str(p) for p in source_dir.rglob("*") if p.suffix.lower() in exts]
+        found = [str(p) for p in source_dir.rglob("*.java")]
         return [types.TextContent(type="text", text=json.dumps(found))]
 
     raise ValueError(f"Unknown tool: {name}")

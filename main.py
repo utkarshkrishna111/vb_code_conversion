@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-VB → Python Migration Orchestrator
+Java → Python Migration Orchestrator
 CLI entry point.
 """
 import asyncio
@@ -15,38 +15,36 @@ from models.migration_state import MigrationRequest
 from utils.logger import setup_logging
 
 app = typer.Typer(
-    name="vb2py",
-    help="VB → Python Migration Orchestrator — Hub & Spoke Architecture",
+    name="java2py",
+    help="Java → Python Migration Orchestrator — Hub & Spoke Architecture",
     add_completion=False,
 )
 console = Console()
 
+_DEFAULT_OUTPUT = Path.home() / "output"
+
 
 @app.command()
 def migrate(
-    source_dir: Path = typer.Argument(..., help="Directory containing .vb / .bas / .cls source files"),
-    output_dir: Path = typer.Option(Path("./output"), "--out", "-o", help="Directory for generated Python output"),
+    source_dir: Path = typer.Argument(..., help="Directory containing .java source files"),
+    output_dir: Path = typer.Option(_DEFAULT_OUTPUT, "--out", "-o", help="Directory for generated Python output"),
     max_retries: int = typer.Option(3, "--retries", "-r", help="Max self-correction cycles in Step 3"),
-    complexity_threshold: float = typer.Option(
-        0.7, "--threshold", "-t",
-        help="Complexity score (0-1) above which the human gate is triggered",
-    ),
 ):
     """
-    Run the full VB → Python migration pipeline on SOURCE_DIR.
+    Run the full Java → Python migration pipeline on SOURCE_DIR.
 
-    The pipeline has three steps:
+    The pipeline has three steps, each with a mandatory human review gate:
 
-      Step 1 — Discovery, Documentation & Architecture
-      Step 2 — Test-Driven Development (parallel test generation)
-      Step 3 — Conversion & Closed-Loop Execution
+      Step 1 — Discovery, Documentation & Architecture  → Human gate
+      Step 2 — Test-Driven Development (parallel)       → Human gate
+      Step 3 — Conversion & Closed-Loop Execution       → Human gate
 
-    Results are written to OUTPUT_DIR/<module_name>/.
+    Results are written to OUTPUT_DIR/<module_name>/. Defaults to ~/output.
     """
     setup_logging()
 
     console.print(Panel.fit(
-        "[bold blue]VB → Python Migration Orchestrator[/bold blue]\n"
+        "[bold blue]Java → Python Migration Orchestrator[/bold blue]\n"
         "[dim]Hub & Spoke · Test-Driven · MCP Infrastructure[/dim]",
         border_style="blue",
     ))
@@ -55,7 +53,6 @@ def migrate(
         source_dir=source_dir.resolve(),
         output_dir=output_dir.resolve(),
         max_retries=max_retries,
-        complexity_threshold=complexity_threshold,
     )
 
     asyncio.run(_run(request))

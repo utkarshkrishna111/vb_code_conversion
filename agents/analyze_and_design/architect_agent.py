@@ -27,7 +27,7 @@ class ArchitectAgent(BaseAgent):
                 {
                     "role": "user",
                     "content": (
-                        "Design the Python architecture for this VB module.\n\n"
+                        "Design the Python architecture for this Java module.\n\n"
                         "## Structured Analysis (JSON)\n"
                         f"```json\n{analysis.model_dump_json(indent=2)}\n```\n\n"
                         "## Functional Specification (Markdown)\n"

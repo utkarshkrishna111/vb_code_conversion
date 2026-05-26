@@ -1,7 +1,7 @@
 """
 VectorDB MCP Server (Qdrant)
 
-Translation memory: stores and retrieves VB→Python conversion patterns.
+Translation memory: stores and retrieves Java→Python conversion patterns.
 Start: python infrastructure/servers/vectordb_server.py [--memory]
 """
 import asyncio
@@ -61,11 +61,11 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "vb_snippet": {"type": "string"},
+                    "java_snippet": {"type": "string"},
                     "python_snippet": {"type": "string"},
                     "description": {"type": "string"},
                 },
-                "required": ["vb_snippet", "python_snippet", "description"],
+                "required": ["java_snippet", "python_snippet", "description"],
             },
         ),
         types.Tool(
@@ -74,10 +74,10 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "vb_snippet": {"type": "string"},
+                    "java_snippet": {"type": "string"},
                     "top_k": {"type": "integer", "default": 3},
                 },
-                "required": ["vb_snippet"],
+                "required": ["java_snippet"],
             },
         ),
     ]
@@ -89,12 +89,12 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
 
     if name == "store_pattern":
         if _available and _client and _PointStruct:
-            vec = _embed(args["vb_snippet"])
+            vec = _embed(args["java_snippet"])
             point = _PointStruct(
-                id=int(hashlib.md5(args["vb_snippet"].encode()).hexdigest(), 16) % (2**63),
+                id=int(hashlib.md5(args["java_snippet"].encode()).hexdigest(), 16) % (2**63),
                 vector=vec,
                 payload={
-                    "vb_snippet": args["vb_snippet"],
+                    "java_snippet": args["java_snippet"],
                     "python_snippet": args["python_snippet"],
                     "description": args["description"],
                 },
@@ -105,7 +105,7 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
     if name == "search_patterns":
         if not _available or not _client:
             return [types.TextContent(type="text", text=json.dumps([]))]
-        vec = _embed(args["vb_snippet"])
+        vec = _embed(args["java_snippet"])
         hits = _client.search(
             collection_name=_COLLECTION,
             query_vector=vec,

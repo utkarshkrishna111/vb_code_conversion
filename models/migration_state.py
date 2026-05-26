@@ -21,12 +21,11 @@ class MigrationRequest(BaseModel):
     source_dir: Path
     output_dir: Path
     max_retries: int = 3
-    complexity_threshold: float = 0.7
 
 
 class ModuleState(BaseModel):
     name: str
-    vb_file_path: str
+    source_file_path: str
     status: ModuleStatus = ModuleStatus.PENDING
     retry_count: int = 0
     created_at: datetime = Field(default_factory=datetime.now)
@@ -38,7 +37,7 @@ class ModuleState(BaseModel):
 
 class GlobalMigrationState(BaseModel):
     request: MigrationRequest
-    vb_source_files: list[str] = Field(default_factory=list)
+    source_files: list[str] = Field(default_factory=list)
     dependency_graph: dict[str, list[str]] = Field(default_factory=dict)
     modules: dict[str, ModuleState] = Field(default_factory=dict)
     migration_log: list[str] = Field(default_factory=list)
