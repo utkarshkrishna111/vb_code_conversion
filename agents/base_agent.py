@@ -1,20 +1,29 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Optional
 import json
+import os
 
-import anthropic
+import litellm
+from litellm import ModelResponse
 
 from config import Config
 from utils.logger import get_logger
+
+# Suppress LiteLLM's verbose startup banner
+litellm.suppress_debug_info = True
+
+# Inject whichever API key is active so LiteLLM can find it
+os.environ.setdefault("ANTHROPIC_API_KEY", Config.ANTHROPIC_API_KEY)
+os.environ.setdefault("OPENAI_API_KEY",    Config.OPENAI_API_KEY)
+os.environ.setdefault("GEMINI_API_KEY",    Config.GEMINI_API_KEY)
 
 
 class BaseAgent(ABC):
     """Abstract base for every spoke agent in the pipeline."""
 
     def __init__(self, name: str, model: Optional[str] = None):
-        self.name = name
-        self.model = model or Config.AGENT_MODEL
-        self.client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        self.name   = name
+        self.model  = model or Config.AGENT_MODEL
         self.logger = get_logger(name)
 
     # ── LLM helpers ──────────────────────────────────────────────────────────
@@ -25,38 +34,30 @@ class BaseAgent(ABC):
         messages: list[dict],
         max_tokens: int = 4096,
         tools: Optional[list] = None,
-    ) -> anthropic.types.Message:
-        """Single Claude API call with prompt caching on the system prompt."""
+    ) -> ModelResponse:
+        """Single LLM call — works with Anthropic, OpenAI, and Gemini."""
+        all_messages = [{"role": "system", "content": system}] + messages
+
         kwargs: dict = {
-            "model": self.model,
+            "model":      self.model,
+            "messages":   all_messages,
             "max_tokens": max_tokens,
-            "system": [
-                {
-                    "type": "text",
-                    "text": system,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            "messages": messages,
         }
         if tools:
             kwargs["tools"] = tools
 
-        response = self.client.messages.create(**kwargs)
+        response = litellm.completion(**kwargs)
+        usage = response.usage
         self.logger.debug(
-            f"tokens used — input: {response.usage.input_tokens}, "
-            f"output: {response.usage.output_tokens}"
+            f"tokens — input: {usage.prompt_tokens}, output: {usage.completion_tokens}"
         )
         return response
 
-    def _text(self, response: anthropic.types.Message) -> str:
-        """Extract the first text block from a response."""
-        for block in response.content:
-            if block.type == "text":
-                return block.text
-        return ""
+    def _text(self, response: ModelResponse) -> str:
+        """Extract the text content from a LiteLLM response."""
+        return response.choices[0].message.content or ""
 
-    def _parse_json(self, response: anthropic.types.Message) -> dict:
+    def _parse_json(self, response: ModelResponse) -> dict:
         """Extract and parse JSON from a response, stripping markdown fences."""
         raw = self._text(response).strip()
         if raw.startswith("```"):

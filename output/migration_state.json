@@ -1,0 +1,32 @@
+{
+  "request": {
+    "source_dir": "/home/siva_sunku_cloud/vb_code_conversion/sample_vb",
+    "output_dir": "/home/siva_sunku_cloud/vb_code_conversion/output",
+    "max_retries": 3,
+    "complexity_threshold": 0.7
+  },
+  "vb_source_files": [
+    "/home/siva_sunku_cloud/vb_code_conversion/sample_vb/InvoiceCalculator.bas"
+  ],
+  "dependency_graph": {},
+  "modules": {
+    "InvoiceCalculator": {
+      "name": "InvoiceCalculator",
+      "vb_file_path": "/home/siva_sunku_cloud/vb_code_conversion/sample_vb/InvoiceCalculator.bas",
+      "status": "failed",
+      "retry_count": 0,
+      "created_at": "2026-05-26T21:09:20.029952",
+      "updated_at": "2026-05-26T21:09:20.597529",
+      "artifacts": {},
+      "error": "\"Could not resolve authentication method. Expected one of api_key, auth_token, or credentials to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\""
+    }
+  },
+  "migration_log": [
+    "[2026-05-26T21:09:20] Migration pipeline initialised",
+    "[2026-05-26T21:09:20] [InvoiceCalculator] → analyzing",
+    "[2026-05-26T21:09:20] [InvoiceCalculator] → failed (\"Could not resolve authentication method. Expected one of api_key, auth_token, or credentials to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\")"
+  ],
+  "started_at": "2026-05-26T21:09:20.021348",
+  "completed_modules": 0,
+  "failed_modules": 1
+}
