@@ -235,11 +235,10 @@ echo "  $(bold 'PHASE 4 — Options')"
 hr
 printf '\n'
 
-read -rp "  Max retries for Step 3 [3]: " _r
-MAX_RETRIES="${_r:-3}"
+MAX_RETRIES=3
 
-read -rp "  Log level (DEBUG/INFO/WARNING) [DEBUG]: " _l
-LOG_LEVEL="${_l:-DEBUG}"
+read -rp "  Log level (DEBUG/INFO/WARNING) [INFO]: " _l
+LOG_LEVEL="${_l:-INFO}"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Summary & launch

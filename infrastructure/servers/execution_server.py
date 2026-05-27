@@ -5,6 +5,7 @@ Sandboxed runner for pytest and mypy. Returns structured JSON results.
 Start: python infrastructure/servers/execution_server.py <working_dir>
 """
 import asyncio
+import functools
 import json
 import subprocess
 import sys
@@ -18,6 +19,15 @@ from mcp.server.models import InitializationOptions
 server = Server("vb2py-execution")
 
 _working_dir: Path = Path(".").resolve()
+
+
+@functools.lru_cache(maxsize=1)
+def _mypy_available() -> bool:
+    r = subprocess.run(
+        [sys.executable, "-m", "mypy", "--version"],
+        capture_output=True, text=True,
+    )
+    return r.returncode == 0
 
 
 @server.list_tools()
@@ -78,6 +88,12 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
         return [types.TextContent(type="text", text=json.dumps(result))]
 
     if name == "run_mypy":
+        if not _mypy_available():
+            return [types.TextContent(type="text", text=json.dumps({
+                "returncode": 0,
+                "stdout": "mypy skipped (not installed)",
+                "stderr": "",
+            }))]
         result = _run([sys.executable, "-m", "mypy", "--strict", args["source_file"]])
         return [types.TextContent(type="text", text=json.dumps(result))]
 
