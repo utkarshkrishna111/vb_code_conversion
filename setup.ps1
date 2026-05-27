@@ -2,50 +2,124 @@
 # Run with: powershell -ExecutionPolicy Bypass -File setup.ps1
 
 $ErrorActionPreference = "Stop"
-$VENV_DIR = ".venv"
-$ENV_FILE = ".env"
+$CONDA_ENV = "vb_migration"
+$ENV_FILE  = ".env"
 
 function Info    { param($msg) Write-Host "[INFO]  $msg"  -ForegroundColor Cyan   }
 function Success { param($msg) Write-Host "[OK]    $msg"  -ForegroundColor Green  }
 function Warn    { param($msg) Write-Host "[WARN]  $msg"  -ForegroundColor Yellow }
 function Fail    { param($msg) Write-Host "[ERROR] $msg"  -ForegroundColor Red; exit 1 }
 
-# -- Python check --------------------------------------------------------------
-Info "Checking Python..."
-$PYTHON = $null
-foreach ($cmd in @("python", "python3", "py")) {
-    try {
-        $ver = & $cmd --version 2>&1
-        if ($ver -match "Python (\d+)\.(\d+)") {
-            $major = [int]$Matches[1]; $minor = [int]$Matches[2]
-            if ($major -gt 3 -or ($major -eq 3 -and $minor -ge 10)) {
-                $PYTHON = $cmd; break
+# -- Find conda ----------------------------------------------------------------
+$condaExe = $env:CONDA_EXE
+if (-not $condaExe) {
+    $c = Get-Command conda -ErrorAction SilentlyContinue
+    if ($c) { $condaExe = $c.Source }
+}
+
+# -- Environment setup --------------------------------------------------------
+$USE_CONDA = $false
+$PYTHON    = $null
+
+if ($condaExe -and (Test-Path $condaExe)) {
+    Info "Conda detected -- using conda environment '$CONDA_ENV'"
+    $USE_CONDA = $true
+
+    $envJson = (& $condaExe env list --json 2>&1) -join ""
+    $envList = ($envJson | ConvertFrom-Json).envs
+    $envPath = $envList | Where-Object { (Split-Path $_ -Leaf) -eq $CONDA_ENV } | Select-Object -First 1
+
+    if ($envPath) {
+        Info "Conda env '$CONDA_ENV' already exists -- skipping creation."
+    } else {
+        Info "Creating conda env '$CONDA_ENV' with Python 3.10..."
+        & $condaExe create -y -n $CONDA_ENV python=3.10 2>&1 | Select-Object -Last 3
+        Success "Created conda env '$CONDA_ENV'"
+
+        $envJson = (& $condaExe env list --json 2>&1) -join ""
+        $envList = ($envJson | ConvertFrom-Json).envs
+        $envPath = $envList | Where-Object { (Split-Path $_ -Leaf) -eq $CONDA_ENV } | Select-Object -First 1
+    }
+
+    if (-not $envPath) { Fail "Could not locate conda env path for '$CONDA_ENV'" }
+    $PYTHON = Join-Path $envPath "python.exe"
+    if (-not (Test-Path $PYTHON)) { Fail "python.exe not found in conda env: $envPath" }
+    Success "Using conda env '$CONDA_ENV'"
+
+} else {
+    Warn "Conda not found -- falling back to Python venv"
+    $VENV_DIR = ".venv"
+
+    # Find Python 3.10+ in PATH
+    foreach ($cmd in @("python", "python3", "py")) {
+        try {
+            $ver = & $cmd --version 2>&1
+            if ($ver -match "Python (\d+)\.(\d+)") {
+                $major = [int]$Matches[1]; $minor = [int]$Matches[2]
+                if ($major -gt 3 -or ($major -eq 3 -and $minor -ge 10)) {
+                    $PYTHON = $cmd; break
+                }
+            }
+        } catch {}
+    }
+
+    # Also check Windows registry (python.org installs not in PATH)
+    if (-not $PYTHON) {
+        foreach ($regRoot in @("HKCU:\SOFTWARE\Python\PythonCore", "HKLM:\SOFTWARE\Python\PythonCore")) {
+            if (-not $PYTHON -and (Test-Path $regRoot)) {
+                Get-ChildItem $regRoot -ErrorAction SilentlyContinue | ForEach-Object {
+                    if (-not $PYTHON) {
+                        $ipPath = Join-Path $_.PSPath "InstallPath"
+                        if (Test-Path $ipPath) {
+                            $pyDir = (Get-ItemProperty $ipPath -ErrorAction SilentlyContinue)."(default)"
+                            if ($pyDir) {
+                                $pyExe = Join-Path $pyDir "python.exe"
+                                if (Test-Path $pyExe) {
+                                    try {
+                                        $ver = & $pyExe --version 2>&1
+                                        if ($ver -match "Python (\d+)\.(\d+)") {
+                                            $major = [int]$Matches[1]; $minor = [int]$Matches[2]
+                                            if ($major -gt 3 -or ($major -eq 3 -and $minor -ge 10)) {
+                                                $PYTHON = $pyExe
+                                            }
+                                        }
+                                    } catch {}
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-    } catch {}
-}
-if (-not $PYTHON) { Fail "Python 3.10+ not found. Install it from https://python.org and re-run." }
-$pyVer = (& $PYTHON --version 2>&1) -replace "Python ", ""
-Success "Python $pyVer"
+    }
 
-# -- Virtual environment -------------------------------------------------------
-if (-not (Test-Path $VENV_DIR)) {
-    Info "Creating virtual environment..."
-    & $PYTHON -m venv $VENV_DIR
-    Success "Created $VENV_DIR"
-} else {
-    Info "Virtual environment already exists -- skipping creation."
-}
+    if (-not $PYTHON) {
+        Fail "Python 3.10+ not found. Install Miniconda (https://docs.conda.io) or Python (https://python.org) and re-run."
+    }
 
-$activateScript = Join-Path $VENV_DIR "Scripts\Activate.ps1"
-if (-not (Test-Path $activateScript)) { Fail "Activation script not found: $activateScript" }
-. $activateScript
-Info "Activated $VENV_DIR"
+    $pyVer = (& $PYTHON --version 2>&1) -replace "Python ", ""
+    Success "Python $pyVer"
+
+    if (-not (Test-Path $VENV_DIR)) {
+        Info "Creating virtual environment..."
+        & $PYTHON -m venv $VENV_DIR
+        Success "Created $VENV_DIR"
+    } else {
+        Info "Virtual environment already exists -- skipping creation."
+    }
+
+    $activateScript = Join-Path $VENV_DIR "Scripts\Activate.ps1"
+    if (-not (Test-Path $activateScript)) { Fail "Activation script not found: $activateScript" }
+    . $activateScript
+    Info "Activated $VENV_DIR"
+
+    $PYTHON = Join-Path $VENV_DIR "Scripts\python.exe"
+}
 
 # -- Dependencies --------------------------------------------------------------
 Info "Installing dependencies..."
-& pip install --quiet --upgrade pip
-& pip install --quiet -r requirements.txt
+& $PYTHON -m pip install --quiet --upgrade pip
+& $PYTHON -m pip install --quiet -r requirements.txt
 Success "Dependencies installed."
 
 # -- Provider selection --------------------------------------------------------
@@ -58,25 +132,12 @@ Write-Host ""
 $choice = Read-Host "Enter choice [1-3]"
 
 switch ($choice) {
-    "1" {
-        $provider = "anthropic"
-        $apiKey   = Read-Host "Anthropic API key (sk-ant-...)" -AsSecureString
-        $keyVar   = "ANTHROPIC_API_KEY"
-    }
-    "2" {
-        $provider = "copilot"
-        $apiKey   = Read-Host "GitHub Copilot token (ghp_... or ghu_...)" -AsSecureString
-        $keyVar   = "GITHUB_COPILOT_TOKEN"
-    }
-    "3" {
-        $provider = "openai"
-        $apiKey   = Read-Host "OpenAI API key (sk-...)" -AsSecureString
-        $keyVar   = "OPENAI_API_KEY"
-    }
+    "1" { $provider = "anthropic"; $apiKey = Read-Host "Anthropic API key (sk-ant-...)" -AsSecureString; $keyVar = "ANTHROPIC_API_KEY" }
+    "2" { $provider = "copilot";   $apiKey = Read-Host "GitHub Copilot token (ghp_... or ghu_...)" -AsSecureString; $keyVar = "GITHUB_COPILOT_TOKEN" }
+    "3" { $provider = "openai";    $apiKey = Read-Host "OpenAI API key (sk-...)" -AsSecureString; $keyVar = "OPENAI_API_KEY" }
     default { Fail "Invalid choice." }
 }
 
-# Convert SecureString -> plain text
 $plainKey = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($apiKey)
 )
@@ -109,8 +170,13 @@ Success ".env written for provider: $provider"
 Write-Host ""
 Write-Host "Setup complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Activate the environment:  " -NoNewline
-Write-Host "$VENV_DIR\Scripts\Activate.ps1" -ForegroundColor Cyan
+if ($USE_CONDA) {
+    Write-Host "  Activate the environment:  " -NoNewline
+    Write-Host "conda activate $CONDA_ENV" -ForegroundColor Cyan
+} else {
+    Write-Host "  Activate the environment:  " -NoNewline
+    Write-Host "$VENV_DIR\Scripts\Activate.ps1" -ForegroundColor Cyan
+}
 Write-Host "  Switch provider later:     edit " -NoNewline
 Write-Host $ENV_FILE -ForegroundColor Cyan
 Write-Host "  Run the migration:         " -NoNewline

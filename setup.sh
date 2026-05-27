@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# setup.sh — Linux/macOS setup for the Java→Python migration tool
+# setup.sh -- Linux/macOS setup for the Java->Python migration tool
 set -euo pipefail
 
-VENV_DIR=".venv"
+CONDA_ENV="vb_migration"
 ENV_FILE=".env"
 
-# ── Colours ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -14,38 +13,63 @@ success() { echo -e "${GREEN}[OK]${RESET}    $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 error()   { echo -e "${RED}[ERROR]${RESET} $*"; exit 1; }
 
-# ── Python check ─────────────────────────────────────────────────────────────
-info "Checking Python..."
-PYTHON=$(command -v python3 || command -v python || true)
-[ -z "$PYTHON" ] && error "Python 3.10+ not found. Install it and re-run."
+# -- Environment setup --------------------------------------------------------
+USE_CONDA=false
 
-PY_VER=$($PYTHON -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
-PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
-(( PY_MAJOR < 3 || (PY_MAJOR == 3 && PY_MINOR < 10) )) && \
-    error "Python 3.10+ required, found $PY_VER"
-success "Python $PY_VER"
+if command -v conda &>/dev/null; then
+    info "Conda detected -- using conda environment '$CONDA_ENV'"
+    USE_CONDA=true
 
-# ── Virtual environment ───────────────────────────────────────────────────────
-if [ ! -d "$VENV_DIR" ]; then
-    info "Creating virtual environment..."
-    $PYTHON -m venv "$VENV_DIR"
-    success "Created $VENV_DIR"
+    # Enable 'conda activate' inside this script
+    CONDA_BASE=$(conda info --base)
+    # shellcheck source=/dev/null
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+
+    if conda env list | grep -qE "^${CONDA_ENV}[[:space:]]"; then
+        info "Conda env '$CONDA_ENV' already exists -- skipping creation."
+    else
+        info "Creating conda env '$CONDA_ENV' with Python 3.10..."
+        conda create -y -n "$CONDA_ENV" python=3.10 2>&1 | tail -3
+        success "Created conda env '$CONDA_ENV'"
+    fi
+
+    conda activate "$CONDA_ENV"
+    success "Activated conda env '$CONDA_ENV'"
+
 else
-    info "Virtual environment already exists — skipping creation."
+    warn "Conda not found -- falling back to Python venv"
+    VENV_DIR=".venv"
+
+    PYTHON=$(command -v python3 || command -v python || true)
+    [ -z "$PYTHON" ] && error "Python 3.10+ not found. Install Miniconda (https://docs.conda.io) or Python and re-run."
+
+    PY_VER=$($PYTHON -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+    PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+    PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+    (( PY_MAJOR < 3 || (PY_MAJOR == 3 && PY_MINOR < 10) )) && \
+        error "Python 3.10+ required, found $PY_VER"
+    success "Python $PY_VER"
+
+    if [ ! -d "$VENV_DIR" ]; then
+        info "Creating virtual environment..."
+        $PYTHON -m venv "$VENV_DIR"
+        success "Created $VENV_DIR"
+    else
+        info "Virtual environment already exists -- skipping creation."
+    fi
+
+    # shellcheck source=/dev/null
+    source "$VENV_DIR/bin/activate"
+    info "Activated $VENV_DIR"
 fi
 
-# shellcheck source=/dev/null
-source "$VENV_DIR/bin/activate"
-info "Activated $VENV_DIR"
-
-# ── Dependencies ─────────────────────────────────────────────────────────────
+# -- Dependencies -------------------------------------------------------------
 info "Installing dependencies..."
-pip install --quiet --upgrade pip
+python -m pip install --quiet --upgrade pip
 pip install --quiet -r requirements.txt
 success "Dependencies installed."
 
-# ── Provider selection ───────────────────────────────────────────────────────
+# -- Provider selection -------------------------------------------------------
 echo ""
 echo -e "${BOLD}Select LLM provider:${RESET}"
 echo "  1) Anthropic (claude-sonnet / claude-opus)"
@@ -55,32 +79,18 @@ echo ""
 read -rp "Enter choice [1-3]: " CHOICE
 
 case "$CHOICE" in
-  1)
-    PROVIDER="anthropic"
-    read -rsp "Anthropic API key (sk-ant-...): " API_KEY; echo
-    KEY_VAR="ANTHROPIC_API_KEY"
-    ;;
-  2)
-    PROVIDER="copilot"
-    read -rsp "GitHub Copilot token (ghp_... or ghu_...): " API_KEY; echo
-    KEY_VAR="GITHUB_COPILOT_TOKEN"
-    ;;
-  3)
-    PROVIDER="openai"
-    read -rsp "OpenAI API key (sk-...): " API_KEY; echo
-    KEY_VAR="OPENAI_API_KEY"
-    ;;
-  *)
-    error "Invalid choice."
-    ;;
+  1) PROVIDER="anthropic"; read -rsp "Anthropic API key (sk-ant-...): " API_KEY; echo; KEY_VAR="ANTHROPIC_API_KEY" ;;
+  2) PROVIDER="copilot";   read -rsp "GitHub Copilot token (ghp_... or ghu_...): " API_KEY; echo; KEY_VAR="GITHUB_COPILOT_TOKEN" ;;
+  3) PROVIDER="openai";    read -rsp "OpenAI API key (sk-...): " API_KEY; echo; KEY_VAR="OPENAI_API_KEY" ;;
+  *) error "Invalid choice." ;;
 esac
 
 [ -z "$API_KEY" ] && error "API key cannot be empty."
 
-# ── Write .env ────────────────────────────────────────────────────────────────
+# -- Write .env ---------------------------------------------------------------
 info "Writing $ENV_FILE..."
 cat > "$ENV_FILE" <<EOF
-# Auto-generated by setup.sh — edit as needed
+# Auto-generated by setup.sh -- edit as needed
 
 LLM_PROVIDER=${PROVIDER}
 ${KEY_VAR}=${API_KEY}
@@ -100,11 +110,15 @@ EOF
 
 success ".env written for provider: ${PROVIDER}"
 
-# ── Done ─────────────────────────────────────────────────────────────────────
+# -- Done ---------------------------------------------------------------------
 echo ""
 echo -e "${GREEN}${BOLD}Setup complete!${RESET}"
 echo ""
-echo -e "  To activate the environment:  ${CYAN}source ${VENV_DIR}/bin/activate${RESET}"
-echo -e "  To switch provider later:     edit ${CYAN}${ENV_FILE}${RESET}"
-echo -e "  To run the migration:         ${CYAN}python main.py migrate sample_java/ --out ./output${RESET}"
+if [ "$USE_CONDA" = true ]; then
+    echo -e "  Activate the environment:  ${CYAN}conda activate ${CONDA_ENV}${RESET}"
+else
+    echo -e "  Activate the environment:  ${CYAN}source ${VENV_DIR}/bin/activate${RESET}"
+fi
+echo -e "  Switch provider later:     edit ${CYAN}${ENV_FILE}${RESET}"
+echo -e "  Run the migration:         ${CYAN}python main.py migrate sample_java/ --out ./output${RESET}"
 echo ""
