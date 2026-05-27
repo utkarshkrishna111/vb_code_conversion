@@ -16,6 +16,9 @@ litellm.suppress_debug_info = True
 os.environ.setdefault("ANTHROPIC_API_KEY", Config.ANTHROPIC_API_KEY)
 os.environ.setdefault("OPENAI_API_KEY",    Config.OPENAI_API_KEY)
 os.environ.setdefault("GEMINI_API_KEY",    Config.GEMINI_API_KEY)
+# GitHub Copilot uses GITHUB_TOKEN for litellm's github/ model prefix
+if Config.LLM_PROVIDER == "copilot" and Config.GITHUB_COPILOT_TOKEN:
+    os.environ.setdefault("GITHUB_TOKEN", Config.GITHUB_COPILOT_TOKEN)
 
 
 class BaseAgent(ABC):

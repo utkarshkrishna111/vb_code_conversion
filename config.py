@@ -18,18 +18,24 @@ _DEFAULTS: dict[str, dict[str, str]] = {
         "agent": "gemini/gemini-1.5-pro",
         "hub":   "gemini/gemini-1.5-pro",
     },
+    # GitHub Copilot — uses GITHUB_TOKEN, model names are prefixed with "github/"
+    "copilot": {
+        "agent": "github/gpt-4o",
+        "hub":   "github/gpt-4o",
+    },
 }
 
 
 class Config:
     # ── LLM provider ──────────────────────────────────────────────────────────
-    # Set LLM_PROVIDER to: anthropic | openai | gemini
+    # Set LLM_PROVIDER to: anthropic | openai | gemini | copilot
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "anthropic").lower()
 
     # API keys — only the one matching LLM_PROVIDER needs to be set
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     OPENAI_API_KEY: str    = os.getenv("OPENAI_API_KEY", "")
     GEMINI_API_KEY: str    = os.getenv("GEMINI_API_KEY", "")
+    GITHUB_COPILOT_TOKEN: str = os.getenv("GITHUB_COPILOT_TOKEN", "")
 
     # Models — defaults come from the table above; override per-agent in .env
     AGENT_MODEL: str = os.getenv(
