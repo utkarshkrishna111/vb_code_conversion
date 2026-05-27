@@ -60,4 +60,6 @@ class BaseMCPClient:
         """Call an MCP tool and return the first text content block."""
         assert self.session is not None, "Client is not connected — use async with"
         result = await self.session.call_tool(tool, kwargs)
-        return result.content[0].text  # type: ignore[union-attr]
+        if not result.content:
+            return ""
+        return result.content[0].text or ""  # type: ignore[union-attr]

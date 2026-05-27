@@ -1,6 +1,6 @@
 # Infrastructure — MCP Servers & Clients
 
-This package contains the real **Model Context Protocol (MCP)** infrastructure for the VB → Python migration pipeline. It is split into two sub-packages that mirror each other: `servers/` and `clients/`.
+This package contains the real **Model Context Protocol (MCP)** infrastructure for the Java → Python migration pipeline. It is split into two sub-packages that mirror each other: `servers/` and `clients/`.
 
 ---
 
@@ -26,7 +26,7 @@ Each file is a standalone Python script that registers MCP tools and runs the `m
 
 | File | MCP server name | Tools exposed |
 |---|---|---|
-| `filesystem_server.py` | `vb2py-filesystem` | `read_text`, `write_text`, `read_json`, `write_json`, `list_files`, `find_vb_files` |
+| `filesystem_server.py` | `vb2py-filesystem` | `read_text`, `write_text`, `read_json`, `write_json`, `list_files`, `find_java_files` |
 | `execution_server.py` | `vb2py-execution` | `run_pytest_collect`, `run_pytest`, `run_mypy` |
 | `vectordb_server.py` | `vb2py-vectordb` | `store_pattern`, `search_patterns` |
 | `github_server.py` | `vb2py-github` | `create_pr` |
@@ -58,7 +58,7 @@ Each client is an **async context manager** that spawns its server and exposes t
 | File | Wraps | Key methods |
 |---|---|---|
 | `base_client.py` | — | `_call(tool, **kwargs)` helper used by all subclasses |
-| `filesystem_client.py` | `filesystem_server.py` | `read_text()`, `write_text()`, `read_json()`, `write_json()`, `list_files()`, `find_vb_files()` |
+| `filesystem_client.py` | `filesystem_server.py` | `read_text()`, `write_text()`, `read_json()`, `write_json()`, `list_files()`, `find_java_files()` |
 | `execution_client.py` | `execution_server.py` | `run_pytest_collect()`, `run_pytest()`, `run_mypy()` |
 | `vectordb_client.py` | `vectordb_server.py` | `store_pattern()`, `search_patterns()` |
 | `github_client.py` | `github_server.py` | `create_pr()` |
@@ -98,7 +98,7 @@ BaseMCPClient.__aenter__
 
 ## Qdrant (VectorDB) — in-memory vs persistent
 
-The VectorDB server starts in **in-memory mode** by default (`use_memory=True`), so no Docker is required. Translation memory (solved VB→Python patterns) is stored for the duration of the run but is lost when the process exits.
+The VectorDB server starts in **in-memory mode** by default (`use_memory=True`), so no Docker is required. Translation memory (solved Java→Python patterns) is stored for the duration of the run but is lost when the process exits.
 
 For persistent memory across multiple migration runs:
 

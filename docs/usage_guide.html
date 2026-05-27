@@ -440,6 +440,7 @@
       <a href="#walkthrough" class="nav-link"><span class="nav-icon">🚶</span>Convert One Package</a>
       <a href="#overview" class="nav-link active"><span class="nav-icon">🏗</span>Architecture &amp; Design</a>
       <a href="#prerequisites" class="nav-link"><span class="nav-icon">⚙️</span>Prerequisites &amp; Setup</a>
+      <a href="#run-sh" class="nav-link"><span class="nav-icon">▶</span>run.sh Interactive Wrapper</a>
     </div>
 
     <div class="nav-group">
@@ -490,7 +491,7 @@
       <div class="hero-chips">
         <span class="chip chip-blue">Hub &amp; Spoke Architecture</span>
         <span class="chip chip-green">Test-Driven Migration</span>
-        <span class="chip chip-purple">LiteLLM · Claude / OpenAI / Gemini</span>
+        <span class="chip chip-purple">LiteLLM · Claude / OpenAI / Gemini / Copilot</span>
         <span class="chip chip-blue">MCP Infrastructure</span>
         <span class="chip chip-green">Human Gate Every Step</span>
       </div>
@@ -597,7 +598,7 @@
       <table>
         <thead><tr><th>Requirement</th><th>Minimum</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr><td>Python</td><td>3.11+</td><td>Uses <code>match</code>, PEP 604 union types, and <code>tomllib</code></td></tr>
+          <tr><td>Python</td><td>3.10+</td><td>Uses <code>match</code> statements and PEP 604 union types (<code>X | Y</code>)</td></tr>
           <tr><td>Anthropic API Key</td><td>Required</td><td>Create at console.anthropic.com</td></tr>
           <tr><td>Qdrant</td><td>Optional</td><td>Translation memory — pipeline degrades gracefully without it</td></tr>
           <tr><td>GitHub Token</td><td>Optional</td><td>Auto PR creation — scope: <code>repo</code></td></tr>
@@ -607,8 +608,21 @@
       </table>
 
       <h2>Installation</h2>
+
+      <div class="callout callout-success">
+        <div class="callout-icon">🚀</div>
+        <div class="callout-body">
+          <div class="callout-title">Quick setup (recommended)</div>
+          <div class="callout-text">Run <code>./setup.sh</code> (Linux/macOS) or <code>setup.ps1</code> (Windows). The script creates the virtual environment (or conda env if conda is available), installs dependencies, and walks you through choosing an LLM provider and entering your API key. It writes <code>.env</code> automatically.</div>
+        </div>
+      </div>
+
+<pre><span class="prompt"># Quick setup (interactive — handles venv/conda, deps, and .env in one step)</span>
+<span class="cmd">chmod</span> +x setup.sh &amp;&amp; <span class="cmd">./setup.sh</span></pre>
+
+      <p>Or manually:</p>
 <pre><span class="prompt"># 1. Clone / enter the project directory</span>
-<span class="cmd">cd</span> college_project
+<span class="cmd">cd</span> vb_code_conversion
 
 <span class="prompt"># 2. Create a virtual environment (recommended)</span>
 <span class="cmd">python</span> -m venv .venv
@@ -624,23 +638,40 @@
       <table>
         <thead><tr><th>Variable</th><th>Required</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>LLM_PROVIDER</code></td><td>No</td><td>LLM backend: <code>anthropic</code> (default) | <code>openai</code> | <code>gemini</code></td></tr>
+          <tr><td><code>LLM_PROVIDER</code></td><td>No</td><td>LLM backend: <code>anthropic</code> (default) | <code>openai</code> | <code>gemini</code> | <code>copilot</code></td></tr>
           <tr><td><code>ANTHROPIC_API_KEY</code></td><td>If using Claude</td><td>Anthropic API key — starts with <code>sk-ant-</code></td></tr>
           <tr><td><code>OPENAI_API_KEY</code></td><td>If using OpenAI</td><td>OpenAI API key — starts with <code>sk-</code></td></tr>
           <tr><td><code>GEMINI_API_KEY</code></td><td>If using Gemini</td><td>Google AI API key</td></tr>
-          <tr><td><code>HUB_MODEL</code></td><td>No</td><td>Model for the Hub Agent (default per provider, e.g. <code>claude-opus-4-7</code>)</td></tr>
-          <tr><td><code>AGENT_MODEL</code></td><td>No</td><td>Model for spoke agents (default per provider, e.g. <code>claude-sonnet-4-6</code>)</td></tr>
+          <tr><td><code>GITHUB_COPILOT_TOKEN</code></td><td>If using Copilot</td><td>GitHub personal access token (starts with <code>ghp_</code> or <code>ghu_</code>); used as the LLM API key when <code>LLM_PROVIDER=copilot</code></td></tr>
+          <tr><td><code>HUB_MODEL</code></td><td>No</td><td>Model for the Hub Agent — default per provider (e.g. <code>claude-opus-4-7</code> for Anthropic, <code>gpt-4o</code> for OpenAI/Copilot)</td></tr>
+          <tr><td><code>AGENT_MODEL</code></td><td>No</td><td>Model for spoke agents — default per provider (e.g. <code>claude-sonnet-4-6</code> for Anthropic, <code>gpt-4o</code> for OpenAI/Copilot)</td></tr>
           <tr><td><code>MAX_RETRIES</code></td><td>No</td><td>Self-correction budget in Step 3 (default: 3)</td></tr>
-          <tr><td><code>QDRANT_URL</code></td><td>No</td><td>Qdrant server URL (default: <code>http://localhost:6333</code>)</td></tr>
+          <tr><td><code>DATA_FOLDER</code></td><td>No</td><td>Root output directory (default: <code>~/data_code_conversion</code>). Each migration run creates a subdirectory named after the source folder.</td></tr>
+          <tr><td><code>LOG_FOLDER</code></td><td>No</td><td>Directory for rotating log files (default: <code>~/data_code_conversion/logs</code>). A new file is created per calendar day.</td></tr>
+          <tr><td><code>LOG_LEVEL</code></td><td>No</td><td>Log verbosity: <code>DEBUG</code> (default) | <code>INFO</code> | <code>WARNING</code> | <code>ERROR</code>. Also settable via <code>--log-level</code> CLI flag.</td></tr>
+          <tr><td><code>QDRANT_URL</code></td><td>No</td><td>Qdrant server URL (default: <code>http://localhost:6333</code>). Omit to use in-memory mode.</td></tr>
           <tr><td><code>QDRANT_API_KEY</code></td><td>No</td><td>Qdrant API key (leave blank for local)</td></tr>
-          <tr><td><code>GITHUB_TOKEN</code></td><td>No</td><td>GitHub personal access token (scope: <code>repo</code>)</td></tr>
+          <tr><td><code>GITHUB_TOKEN</code></td><td>No</td><td>GitHub personal access token for PR creation (scope: <code>repo</code>)</td></tr>
           <tr><td><code>GITHUB_REPO</code></td><td>No</td><td>Target repo in <code>owner/repo</code> format</td></tr>
         </tbody>
       </table>
 
       <h2>Verify Installation</h2>
 <pre><span class="cmd">python</span> main.py --help</pre>
-      <p>You should see the CLI help output with <code>SOURCE_DIR</code>, <code>--out</code>, and <code>--retries</code> options.</p>
+      <p>You should see:</p>
+<pre><span class="kw">Usage:</span> main.py [OPTIONS] SOURCE_DIR
+
+  Java → Python Migration Orchestrator — Hub &amp; Spoke Architecture
+
+<span class="kw">Arguments:</span>
+  SOURCE_DIR  Directory containing .java source files  [required]
+
+<span class="kw">Options:</span>
+  <span class="flag">--out</span>         -o  PATH     Output directory (default: DATA_FOLDER/&lt;source_dir_name&gt;)
+  <span class="flag">--retries</span>     -r  INTEGER  Max self-correction cycles in Step 3  [default: 3]
+  <span class="flag">--log-level</span>   -l  TEXT     Log level: DEBUG | INFO | WARNING | ERROR  [default: DEBUG]
+  <span class="flag">--start-step</span>  -s  TEXT     Resume from step: 1a | 1b | 1c | 2 | 3  [default: 1a]
+  <span class="flag">--help</span>                    Show this message and exit.</pre>
     </section>
 
     <!-- ══════════════ SECTION: Input ══════════════ -->
@@ -706,9 +737,14 @@
       </div>
 
       <h2>Quick Start Command</h2>
-<pre><span class="cmd">python</span> main.py your_java_project/ \
-    --out output/ \
-    --retries <span class="num">3</span></pre>
+<pre><span class="prompt"># Output defaults to ~/data_code_conversion/your_java_project/</span>
+<span class="cmd">python</span> main.py your_java_project/
+
+<span class="prompt"># Override the output location with --out</span>
+<span class="cmd">python</span> main.py your_java_project/ --out output/ --retries <span class="num">3</span>
+
+<span class="prompt"># Or use the interactive wrapper (detects existing state and prompts for resume step)</span>
+<span class="cmd">./run.sh</span> your_java_project/</pre>
     </section>
 
     <!-- ══════════════ SECTION: Step 1 ══════════════ -->
@@ -850,7 +886,7 @@
         <div class="callout-icon">💡</div>
         <div class="callout-body">
           <div class="callout-title">Editing before approving</div>
-          <div class="callout-text">You can open <code>output/{module}/{module}_spec.md</code> or <code>output/{module}/{module}_architecture.json</code>, make edits, save, and then type <code>y</code> — the pipeline picks up the saved files.</div>
+          <div class="callout-text">You can open <code>OUT/{module}/{module}_spec.md</code> or <code>OUT/{module}/{module}_architecture.json</code> (where <code>OUT</code> is your output directory, e.g. <code>~/data_code_conversion/&lt;project&gt;</code>), make edits, save, and then type <code>y</code> — the pipeline picks up the saved files.</div>
         </div>
       </div>
     </section>
@@ -1167,15 +1203,15 @@ Found <span class="num">2</span> errors in <span class="num">1</span> file (chec
         <li><span class="check-icon">☐</span><div><span class="check-label">Exception paths tested</span><br><span class="check-note">Every business rule that says "raises X on Y" must have a <code>with pytest.raises(X)</code> test.</span></div></li>
         <li><span class="check-icon">☐</span><div><span class="check-label">No <code>assert True</code>, <code>assert 1 == 1</code></span><br><span class="check-note">Grep the test file: <code>grep "assert True\|assert 1 == 1" test_*.py</code> — output must be empty.</span></div></li>
         <li><span class="check-icon">☐</span><div><span class="check-label">Golden master data matches actual Java output</span><br><span class="check-note">If you have real Java I/O logs, spot-check 5 parametrize cases against them.</span></div></li>
-        <li><span class="check-icon">☐</span><div><span class="check-label">Dry run passes (all tests collected)</span><br><span class="check-note">Run manually: <code>pytest --collect-only output/{module}/test_{module}.py</code></span></div></li>
+        <li><span class="check-icon">☐</span><div><span class="check-label">Dry run passes (all tests collected)</span><br><span class="check-note">Run manually: <code>pytest --collect-only OUT/{module}/test_{module}.py</code></span></div></li>
       </ul>
 
       <h2>Step 3 — Generated Python Code</h2>
       <ul class="checklist">
-        <li><span class="check-icon">☐</span><div><span class="check-label">mypy --strict exits 0</span><br><span class="check-note">Run: <code>mypy --strict output/{module}/{module}.py</code></span></div></li>
-        <li><span class="check-icon">☐</span><div><span class="check-label">All tests pass</span><br><span class="check-note">Run: <code>pytest -v output/{module}/test_{module}.py</code></span></div></li>
+        <li><span class="check-icon">☐</span><div><span class="check-label">mypy --strict exits 0</span><br><span class="check-note">Run: <code>mypy --strict OUT/{module}/{module}.py</code></span></div></li>
+        <li><span class="check-icon">☐</span><div><span class="check-label">All tests pass</span><br><span class="check-note">Run: <code>pytest -v OUT/{module}/test_{module}.py</code> (where <code>OUT</code> = your output dir)</span></div></li>
         <li><span class="check-icon">☐</span><div><span class="check-label">Line count is proportionate</span><br><span class="check-note">Python should be ~50–70% of the Java line count (less ceremony, same logic). Suspiciously short = likely missing logic.</span></div></li>
-        <li><span class="check-icon">☐</span><div><span class="check-label">No <code>Any</code> types in production paths</span><br><span class="check-note">Run: <code>grep "Any" output/{module}/{module}.py</code> — any hits should be justified with a comment.</span></div></li>
+        <li><span class="check-icon">☐</span><div><span class="check-label">No <code>Any</code> types in production paths</span><br><span class="check-note">Run: <code>grep "Any" OUT/{module}/{module}.py</code> — any hits should be justified with a comment.</span></div></li>
         <li><span class="check-icon">☐</span><div><span class="check-label">Error handling is specific</span><br><span class="check-note">No bare <code>except:</code> clauses. Each exception should name the specific type (e.g. <code>except ValueError</code>).</span></div></li>
         <li><span class="check-icon">☐</span><div><span class="check-label">Dependencies are injected (not hardcoded)</span><br><span class="check-note">No hardcoded connection strings, file paths, or API endpoints in the module body.</span></div></li>
       </ul>
@@ -1193,7 +1229,7 @@ Found <span class="num">2</span> errors in <span class="num">1</span> file (chec
 
       <p>
         <span class="tag tag-tech">🔧 Tech Team</span>
-        The generated test file lives at <code>output/{module}/test_{module}.py</code>. You can edit it directly.
+        The generated test file lives at <code>OUT/{module}/test_{module}.py</code> (where <code>OUT</code> is your output directory). You can edit it directly.
         The Converter Agent re-reads it on every retry, so manual improvements are preserved.
       </p>
 
@@ -1245,7 +1281,7 @@ Found <span class="num">2</span> errors in <span class="num">1</span> file (chec
     <span class="kw">assert</span> calc_total(inv) == expected_total</pre>
 
       <h2>Adding Your Own Tests</h2>
-      <p>Add tests directly to <code>output/{module}/test_{module}.py</code>. Follow these conventions to keep them compatible with the pipeline:</p>
+      <p>Add tests directly to <code>OUT/{module}/test_{module}.py</code>. Follow these conventions to keep them compatible with the pipeline:</p>
       <ul class="checklist">
         <li><span class="check-icon">✏️</span><div><span class="check-label">Use <code>pytest.mark.parametrize</code> for multiple input variants</span><br><span class="check-note">Avoids copy-paste test functions that all look the same.</span></div></li>
         <li><span class="check-icon">✏️</span><div><span class="check-label">Write a one-line docstring referencing the spec rule number</span><br><span class="check-note">e.g. <code>"""Rule 4: VAT is applied after discount."""</code></span></div></li>
@@ -1257,10 +1293,10 @@ Found <span class="num">2</span> errors in <span class="num">1</span> file (chec
 <pre><span class="prompt"># Install coverage plugin (once)</span>
 <span class="cmd">pip</span> install pytest-cov
 
-<span class="prompt"># Run with coverage report</span>
-<span class="cmd">pytest</span> --cov=output/InvoiceCalculator \
+<span class="prompt"># Run with coverage report (replace OUT with your output directory)</span>
+<span class="cmd">pytest</span> --cov=OUT/InvoiceCalculator \
        --cov-report=term-missing \
-       output/InvoiceCalculator/test_InvoiceCalculator.py</pre>
+       OUT/InvoiceCalculator/test_InvoiceCalculator.py</pre>
 
       <p>Aim for ≥ 90% line coverage. Lines marked as <code>MISS</code> in the report indicate logic paths untested — add parametrize cases for them.</p>
     </section>
@@ -1278,18 +1314,19 @@ Found <span class="num">2</span> errors in <span class="num">1</span> file (chec
       <span class="tag tag-tech">🔧 Tech Team</span>
 
       <h2>Common Commands</h2>
+      <p>Replace <code>OUT</code> with your actual output path (e.g. <code>~/data_code_conversion/sample_java</code> or whatever you passed to <code>--out</code>).</p>
       <table>
         <thead><tr><th>Goal</th><th>Command</th></tr></thead>
         <tbody>
-          <tr><td>Run all tests for one module</td><td><code>pytest output/InvoiceCalculator/test_InvoiceCalculator.py</code></td></tr>
-          <tr><td>Verbose output (show each test name)</td><td><code>pytest -v output/InvoiceCalculator/test_InvoiceCalculator.py</code></td></tr>
-          <tr><td>Stop on first failure</td><td><code>pytest -x output/InvoiceCalculator/</code></td></tr>
-          <tr><td>Run only golden master tests</td><td><code>pytest -k "golden_master" output/InvoiceCalculator/</code></td></tr>
-          <tr><td>Run only functional tests</td><td><code>pytest -k "not golden_master" output/InvoiceCalculator/</code></td></tr>
-          <tr><td>Validate syntax (no execution)</td><td><code>pytest --collect-only output/InvoiceCalculator/</code></td></tr>
-          <tr><td>With coverage HTML report</td><td><code>pytest --cov=output/InvoiceCalculator --cov-report=html output/InvoiceCalculator/</code></td></tr>
-          <tr><td>Run all migrated modules</td><td><code>pytest output/ -v --tb=short</code></td></tr>
-          <tr><td>Run mypy type check</td><td><code>mypy --strict output/InvoiceCalculator/InvoiceCalculator.py</code></td></tr>
+          <tr><td>Run all tests for one module</td><td><code>pytest OUT/InvoiceCalculator/test_InvoiceCalculator.py</code></td></tr>
+          <tr><td>Verbose output (show each test name)</td><td><code>pytest -v OUT/InvoiceCalculator/test_InvoiceCalculator.py</code></td></tr>
+          <tr><td>Stop on first failure</td><td><code>pytest -x OUT/InvoiceCalculator/</code></td></tr>
+          <tr><td>Run only golden master tests</td><td><code>pytest -k "golden_master" OUT/InvoiceCalculator/</code></td></tr>
+          <tr><td>Run only functional tests</td><td><code>pytest -k "not golden_master" OUT/InvoiceCalculator/</code></td></tr>
+          <tr><td>Validate syntax (no execution)</td><td><code>pytest --collect-only OUT/InvoiceCalculator/</code></td></tr>
+          <tr><td>With coverage HTML report</td><td><code>pytest --cov=OUT/InvoiceCalculator --cov-report=html OUT/InvoiceCalculator/</code></td></tr>
+          <tr><td>Run all migrated modules</td><td><code>pytest OUT/ -v --tb=short</code></td></tr>
+          <tr><td>Run mypy type check</td><td><code>mypy --strict OUT/InvoiceCalculator/InvoiceCalculator.py</code></td></tr>
         </tbody>
       </table>
 
@@ -1301,7 +1338,7 @@ Found <span class="num">2</span> errors in <span class="num">1</span> file (chec
       </div>
       <div id="pt-all-pass" class="tab-panel active">
 <pre><span class="comment">========================= test session starts =========================</span>
-platform linux -- Python 3.11.0, pytest-8.0.0
+platform linux -- Python 3.10.x, pytest-8.0.0
 
 collected <span class="num">12</span> items
 
@@ -1333,8 +1370,8 @@ ImportError while importing test file:
 
 <span class="comment">========================= short test summary info ==========================</span>
 <span class="flag">ERROR</span> test_InvoiceCalculator.py - ModuleNotFoundError: No module named 'InvoiceCalculator'</pre>
-        <p><strong>Fix:</strong> The test is trying to import from the module before the Python file has been generated (or it's in a different directory). Run from <code>output/InvoiceCalculator/</code> or add the output path to <code>PYTHONPATH</code>:
-        <br><code>PYTHONPATH=output/InvoiceCalculator pytest output/InvoiceCalculator/test_InvoiceCalculator.py</code></p>
+        <p><strong>Fix:</strong> The test is trying to import from the module before the Python file has been generated (or it's in a different directory). Run from the module output directory or add it to <code>PYTHONPATH</code>:
+        <br><code>PYTHONPATH=OUT/InvoiceCalculator pytest OUT/InvoiceCalculator/test_InvoiceCalculator.py</code></p>
       </div>
 
       <h2>Failure Patterns &amp; Fixes</h2>
@@ -1441,18 +1478,21 @@ ImportError while importing test file:
         </div>
       </div>
 
-      <p>Every migrated module produces its own subdirectory under <code>output/</code>:</p>
+      <p>Every migrated module produces its own subdirectory under the output root. The default output root is <code>~/data_code_conversion/&lt;source_dir_name&gt;/</code> (override with <code>--out</code>):</p>
 
       <div class="filetree">
-<span class="ft-dir">output/</span>
-└── <span class="ft-dir">InvoiceCalculator/</span>
-    ├── <span class="ft-gen">InvoiceCalculator.py</span>          <span class="ft-note">← ✅ final Python module</span>
-    ├── <span class="ft-gen">test_InvoiceCalculator.py</span>     <span class="ft-note">← ✅ merged test suite</span>
-    ├── <span class="ft-file">InvoiceCalculator_spec.md</span>     <span class="ft-note">← 📋 Markdown specification</span>
-    └── <span class="ft-file">InvoiceCalculator_architecture.json</span>  <span class="ft-note">← 🏛 architecture blueprint</span>
+<span class="ft-dir">~/data_code_conversion/</span>
+└── <span class="ft-dir">your_java_project/</span>          <span class="ft-note">← named after your source directory</span>
+    ├── <span class="ft-dir">InvoiceCalculator/</span>
+    │   ├── <span class="ft-gen">InvoiceCalculator.py</span>          <span class="ft-note">← ✅ final Python module</span>
+    │   ├── <span class="ft-gen">test_InvoiceCalculator.py</span>     <span class="ft-note">← ✅ merged test suite</span>
+    │   ├── <span class="ft-file">InvoiceCalculator_spec.md</span>     <span class="ft-note">← 📋 Markdown specification</span>
+    │   ├── <span class="ft-file">InvoiceCalculator_architecture.json</span>  <span class="ft-note">← 🏛 architecture blueprint</span>
+    │   └── <span class="ft-file">InvoiceCalculator_analysis.json</span>      <span class="ft-note">← 🔍 raw analysis (Step 1-A)</span>
+    └── <span class="ft-file">migration_state.json</span>           <span class="ft-note">← 🗂 global migration log (all modules)</span>
 
-<span class="ft-dir">output/</span>
-└── <span class="ft-file">migration_state.json</span>           <span class="ft-note">← 🗂 global migration log (all modules)</span>
+<span class="ft-dir">~/data_code_conversion/logs/</span>
+└── <span class="ft-file">code_conversion_YYYY_MM_DD.log</span>  <span class="ft-note">← 📝 rotating log file (one per day)</span>
       </div>
 
       <h2>Artifact Descriptions</h2>
@@ -1473,20 +1513,29 @@ ImportError while importing test file:
           <div class="artifact-path">{module}_architecture.json</div>
           <div class="artifact-desc">Machine-readable architecture blueprint (dataclasses, public API signatures, module boundaries). Used internally by Steps 2 and 3; useful for debugging unexpected designs.</div>
         </div>
+        <div class="artifact-card">
+          <div class="artifact-path">{module}_analysis.json</div>
+          <div class="artifact-desc">Raw structured analysis from Step 1-A (UnderstandAgent). Persisted to disk so later sub-steps (1-B, 1-C) and the <code>--start-step</code> resume feature can reload it without re-invoking the LLM.</div>
+        </div>
+        <div class="artifact-card">
+          <div class="artifact-path">migration_state.json</div>
+          <div class="artifact-desc">Global migration log written to the output root. Records status, retry count, and artifact paths for every module. Used by <code>run.sh</code> to suggest a resume step on re-runs.</div>
+        </div>
       </div>
 
       <h2>migration_state.json</h2>
-      <p>The Hub Agent persists its global state after every status change. If a run is interrupted, the state file shows exactly which modules completed and which are pending.</p>
+      <p>The Hub Agent persists its global state after every status change. If a run is interrupted, the state file shows exactly which modules completed and which are pending. <code>run.sh</code> reads this file to suggest the appropriate <code>--start-step</code> automatically.</p>
 <pre>{
   <span class="str">"modules"</span>: {
     <span class="str">"InvoiceCalculator"</span>: {
       <span class="str">"status"</span>: <span class="str">"completed"</span>,
       <span class="str">"retry_count"</span>: <span class="num">1</span>,
       <span class="str">"artifacts"</span>: {
-        <span class="str">"spec"</span>:         <span class="str">"output/InvoiceCalculator/InvoiceCalculator_spec.md"</span>,
-        <span class="str">"architecture"</span>: <span class="str">"output/InvoiceCalculator/InvoiceCalculator_architecture.json"</span>,
-        <span class="str">"test_suite"</span>:   <span class="str">"output/InvoiceCalculator/test_InvoiceCalculator.py"</span>,
-        <span class="str">"python_source"</span>:<span class="str">"output/InvoiceCalculator/InvoiceCalculator.py"</span>
+        <span class="str">"analysis"</span>:     <span class="str">"~/data_code_conversion/sample_java/InvoiceCalculator/InvoiceCalculator_analysis.json"</span>,
+        <span class="str">"spec"</span>:         <span class="str">"~/data_code_conversion/sample_java/InvoiceCalculator/InvoiceCalculator_spec.md"</span>,
+        <span class="str">"architecture"</span>: <span class="str">"~/data_code_conversion/sample_java/InvoiceCalculator/InvoiceCalculator_architecture.json"</span>,
+        <span class="str">"test_suite"</span>:   <span class="str">"~/data_code_conversion/sample_java/InvoiceCalculator/test_InvoiceCalculator.py"</span>,
+        <span class="str">"python_source"</span>:<span class="str">"~/data_code_conversion/sample_java/InvoiceCalculator/InvoiceCalculator.py"</span>
       }
     }
   },
@@ -1538,7 +1587,7 @@ ImportError while importing test file:
           <tr>
             <td><code>ModuleNotFoundError</code> when running pytest</td>
             <td>Test imports module by name but Python can't find it</td>
-            <td>Run: <code>PYTHONPATH=output/{module} pytest output/{module}/test_{module}.py</code></td>
+            <td>Run: <code>PYTHONPATH=OUT/{module} pytest OUT/{module}/test_{module}.py</code> (replace <code>OUT</code> with your output dir)</td>
           </tr>
           <tr>
             <td>Qdrant connection refused</td>
@@ -1554,15 +1603,31 @@ ImportError while importing test file:
       </table>
 
       <h2>Re-running a Failed Module</h2>
-      <p>The current version processes each module from scratch. To re-run a specific module without repeating the whole batch:</p>
-<pre><span class="prompt"># Point source_dir at a single-file subdirectory</span>
+      <p>Use <code>--start-step</code> to resume from the last successful step instead of re-running the whole pipeline. The <code>run.sh</code> interactive wrapper reads <code>migration_state.json</code> and suggests the correct step automatically.</p>
+<pre><span class="prompt"># Recommended: use run.sh — it reads migration_state.json and offers a resume menu</span>
+<span class="cmd">./run.sh</span> your_java_project/
+
+<span class="prompt"># Manual: skip Steps 1 and 2 (artifacts already on disk), re-run only Step 3</span>
+<span class="cmd">python</span> main.py your_java_project/ --start-step <span class="num">3</span> --retries <span class="num">5</span>
+
+<span class="prompt"># Resume at Step 1-C (reload analysis + spec from disk, re-run architect only)</span>
+<span class="cmd">python</span> main.py your_java_project/ --start-step <span class="num">1c</span>
+
+<span class="prompt"># Fallback: isolate a single file in a temp dir if state is badly corrupted</span>
 <span class="cmd">mkdir</span> tmp_retry && <span class="cmd">cp</span> your_java_project/InvoiceCalculator.java tmp_retry/
-<span class="cmd">python</span> main.py tmp_retry/ --out output/ --retries <span class="num">5</span>
+<span class="cmd">python</span> main.py tmp_retry/ --retries <span class="num">5</span>
 <span class="cmd">rm</span> -rf tmp_retry</pre>
 
       <h2>Debug Logging</h2>
-      <p>Set <code>LOG_LEVEL=DEBUG</code> in <code>.env</code> to see every Claude API call, token usage, and tool result:</p>
-<pre><span class="cmd">LOG_LEVEL=DEBUG python</span> main.py sample_java/ 2>&amp;1 | <span class="cmd">tee</span> migration.log</pre>
+      <p>Use <code>--log-level DEBUG</code> on the CLI or set <code>LOG_LEVEL=DEBUG</code> in <code>.env</code> to see every API call and tool result. Logs are also written to a rotating file under <code>LOG_FOLDER</code> (default <code>~/data_code_conversion/logs/</code>):</p>
+<pre><span class="comment"># CLI flag (overrides .env)</span>
+<span class="cmd">python</span> main.py sample_java/ --log-level DEBUG
+
+<span class="comment"># Env var + tee to local file</span>
+<span class="cmd">LOG_LEVEL=DEBUG python</span> main.py sample_java/ 2>&amp;1 | <span class="cmd">tee</span> migration.log
+
+<span class="comment"># Tail the rotating log file (written automatically to ~/data_code_conversion/logs/)</span>
+<span class="cmd">tail</span> -f ~/data_code_conversion/logs/code_conversion_$(date +%Y_%m_%d).log</pre>
 
       <div class="callout callout-success">
         <div class="callout-icon">🎉</div>
@@ -1587,17 +1652,30 @@ ImportError while importing test file:
 
       <span class="tag tag-tech">🔧 Tech Team</span>
 
-      <h2>Step 1 — Install Python 3.11+</h2>
+      <h2>Step 0 — Quick Setup Script (recommended)</h2>
+      <p>Skip steps 1–5 by running the setup script. It detects conda or falls back to venv, installs all dependencies, lets you choose an LLM provider, and writes <code>.env</code> automatically.</p>
+<pre><span class="cmd">chmod</span> +x setup.sh &amp;&amp; <span class="cmd">./setup.sh</span>       <span class="comment"># Linux / macOS</span>
+<span class="comment"># Windows: right-click setup.ps1 → Run with PowerShell</span></pre>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <div class="callout-title">setup.sh provider choices</div>
+          <div class="callout-text">The script offers three providers: <strong>Anthropic</strong> (Claude), <strong>GitHub Copilot</strong> (gpt-4o via <code>github/</code> prefix), and <strong>OpenAI</strong>. You can switch provider later by editing <code>.env</code>.</div>
+        </div>
+      </div>
+
+      <h2>Step 1 — Install Python 3.10+</h2>
       <p>Check your current version and install if needed:</p>
 <pre><span class="prompt"># Check installed version</span>
 <span class="cmd">python3</span> --version
-<span class="comment"># Must print Python 3.11.x or higher</span>
+<span class="comment"># Must print Python 3.10.x or higher</span>
 
 <span class="prompt"># macOS (Homebrew)</span>
-<span class="cmd">brew</span> install python@3.11
+<span class="cmd">brew</span> install python@3.10
 
 <span class="prompt"># Ubuntu / Debian</span>
-<span class="cmd">sudo apt-get</span> install python3.11 python3.11-venv</pre>
+<span class="cmd">sudo apt-get</span> install python3.10 python3.10-venv</pre>
 
       <h2>Step 2 — Clone the Project</h2>
 <pre><span class="cmd">git</span> clone &lt;repo-url&gt; vb_code_conversion
@@ -1616,18 +1694,24 @@ ImportError while importing test file:
 
       <h2>Step 4 — Install Dependencies</h2>
 <pre><span class="cmd">pip</span> install -r requirements.txt</pre>
-      <p>This installs: <code>anthropic</code>, <code>litellm</code>, <code>mcp</code>, <code>pydantic</code>, <code>rich</code>, <code>typer</code>, <code>qdrant-client</code>, <code>PyGithub</code>, <code>aiofiles</code>, <code>python-dotenv</code>, <code>mypy</code>, <code>pytest</code>.</p>
+      <p>This installs: <code>anthropic</code>, <code>litellm</code>, <code>mcp</code>, <code>pydantic</code>, <code>rich</code>, <code>typer</code>, <code>qdrant-client</code>, <code>PyGithub</code>, <code>aiofiles</code>, <code>python-dotenv</code>. Note: <code>mypy</code> and <code>pytest</code> must be installed separately if not already present on your system.</p>
 
       <h2>Step 5 — Create your <code>.env</code> file</h2>
 <pre><span class="cmd">cp</span> .env.example .env
 <span class="cmd">nano</span> .env        <span class="comment"># or any editor</span></pre>
-      <p>Minimum required content:</p>
-<pre><span class="flag">ANTHROPIC_API_KEY</span>=sk-ant-<span class="comment">…your key here…</span></pre>
+      <p>Minimum required content (set only the key for the provider you chose):</p>
+<pre><span class="flag">LLM_PROVIDER</span>=anthropic
+<span class="flag">ANTHROPIC_API_KEY</span>=sk-ant-<span class="comment">…your key here…</span>
+
+<span class="comment"># --- or for GitHub Copilot ---</span>
+<span class="comment"># LLM_PROVIDER=copilot</span>
+<span class="comment"># GITHUB_COPILOT_TOKEN=ghp_…token…</span></pre>
       <p>Optional extras:</p>
-<pre><span class="flag">GITHUB_TOKEN</span>=ghp_<span class="comment">…token…</span>
+<pre><span class="flag">GITHUB_TOKEN</span>=ghp_<span class="comment">…token for PR creation…</span>
 <span class="flag">GITHUB_REPO</span>=myorg/myrepo
 <span class="flag">QDRANT_URL</span>=http://localhost:<span class="num">6333</span>
 <span class="flag">MAX_RETRIES</span>=<span class="num">3</span>
+<span class="flag">DATA_FOLDER</span>=~/data_code_conversion  <span class="comment"># default output root</span>
 <span class="comment"># Human review gates are mandatory after every step — no threshold needed</span></pre>
 
       <h2>Step 6 — (Optional) Start Qdrant for Translation Memory</h2>
@@ -1639,25 +1723,102 @@ ImportError while importing test file:
       <p>Expected output:</p>
 <pre><span class="kw">Usage:</span> main.py [OPTIONS] SOURCE_DIR
 
-  Java → Python Migration Orchestrator
+  Java → Python Migration Orchestrator — Hub &amp; Spoke Architecture
 
 <span class="kw">Arguments:</span>
-  SOURCE_DIR  Directory containing Java source files  [required]
+  SOURCE_DIR  Directory containing .java source files  [required]
 
 <span class="kw">Options:</span>
-  <span class="flag">--out</span>      TEXT     Output directory  [default: ~/output]
-  <span class="flag">--retries</span>  INTEGER  Max self-correction retries  [default: 3]
-  <span class="flag">--help</span>             Show this message and exit.</pre>
+  <span class="flag">--out</span>         -o  PATH     Output directory (default: DATA_FOLDER/&lt;source_dir_name&gt;)
+  <span class="flag">--retries</span>     -r  INTEGER  Max self-correction cycles in Step 3  [default: 3]
+  <span class="flag">--log-level</span>   -l  TEXT     Log level: DEBUG | INFO | WARNING | ERROR  [default: DEBUG]
+  <span class="flag">--start-step</span>  -s  TEXT     Resume from step: 1a | 1b | 1c | 2 | 3  [default: 1a]
+  <span class="flag">--help</span>                    Show this message and exit.</pre>
 
       <h2>Step 8 — Run a Smoke Test with the Sample</h2>
-<pre><span class="cmd">python</span> main.py sample_java/ --retries <span class="num">2</span></pre>
-      <p>You should see progress panels for each of the 3 steps. A successful run ends with the green completion panel showing <code>Completed: 1</code>.</p>
+<pre><span class="prompt"># Direct CLI</span>
+<span class="cmd">python</span> main.py sample_java/ --retries <span class="num">2</span>
+
+<span class="prompt"># Or use the interactive run.sh wrapper (recommended for first-time runs)</span>
+<span class="cmd">./run.sh</span> sample_java/</pre>
+      <p>You should see progress panels for each of the 3 steps. A successful run ends with the green completion panel showing <code>Completed: 1</code>. Output lands in <code>~/data_code_conversion/sample_java/</code> by default.</p>
 
       <div class="callout callout-success">
         <div class="callout-icon">✅</div>
         <div class="callout-body">
           <div class="callout-title">Setup complete</div>
           <div class="callout-text">Your machine is ready. All four MCP server processes (filesystem, execution, vectordb, github) are started automatically each time you run <code>main.py</code> — you never need to manage them manually.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ SECTION: run.sh ══════════════ -->
+    <section class="section" id="run-sh">
+      <div class="section-header">
+        <div class="section-icon" style="background:#dcfce7">▶</div>
+        <div>
+          <div class="section-title">run.sh — Interactive Wrapper</div>
+          <div class="section-desc">Guided launch with automatic state detection and resume support</div>
+        </div>
+      </div>
+
+      <span class="tag tag-tech">🔧 Tech Team</span>
+
+      <p>
+        <code>run.sh</code> is an interactive Bash wrapper that reads <code>migration_state.json</code>,
+        detects the current progress for each module, and suggests the right <code>--start-step</code> value.
+        It then collects retries and log level interactively, shows a confirmation summary, and calls
+        <code>python main.py</code> with the correct flags.
+      </p>
+
+      <h2>Usage</h2>
+<pre><span class="cmd">./run.sh</span>                   <span class="comment"># fully interactive — prompts for source directory</span>
+<span class="cmd">./run.sh</span> sample_java/      <span class="comment"># pre-fill source dir, still interactive for other options</span></pre>
+
+      <h2>What it does</h2>
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-icon">🔍</div>
+          <div class="card-title">State Detection</div>
+          <div class="card-desc">Reads <code>migration_state.json</code> from the default output folder. Shows each module's current status and why it stopped (e.g. "spec done — resume at 1-C Architect").</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔄</div>
+          <div class="card-title">Smart Resume</div>
+          <div class="card-desc">Computes the suggested <code>--start-step</code> from the last known module status. You can accept the suggestion or choose a different step from the numbered menu.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚙️</div>
+          <div class="card-title">Parameter Collection</div>
+          <div class="card-desc">Prompts for max retries (default 3) and log level (default DEBUG). Shows a confirmation summary before launching.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🗂️</div>
+          <div class="card-title">Output Path</div>
+          <div class="card-desc">Derives <code>DATA_FOLDER/&lt;source_dir_name&gt;</code> automatically — the same logic as <code>config.py</code> — so you always know where output will land before you confirm.</div>
+        </div>
+      </div>
+
+      <h2>Resume Step Menu</h2>
+      <table>
+        <thead><tr><th>Choice</th><th>Step</th><th>What resumes</th></tr></thead>
+        <tbody>
+          <tr><td><code>1</code> or <code>1a</code></td><td>1-A Understand</td><td>Re-runs LLM analysis from scratch</td></tr>
+          <tr><td><code>2</code> or <code>1b</code></td><td>1-B Document</td><td>Reloads saved analysis, re-runs spec writer</td></tr>
+          <tr><td><code>3</code> or <code>1c</code></td><td>1-C Architect</td><td>Reloads analysis + spec, re-runs architect only</td></tr>
+          <tr><td><code>4</code> or <code>2</code></td><td>2 — Generate Tests</td><td>Skips all of Step 1 (loads artifacts from disk)</td></tr>
+          <tr><td><code>5</code> or <code>3</code></td><td>3 — Convert Code</td><td>Skips Steps 1 and 2 (loads test suite from disk)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <div class="callout-title">You can also pass --start-step directly</div>
+          <div class="callout-text">
+            <code>run.sh</code> is a convenience wrapper. All the same control is available directly:<br>
+            <code>python main.py sample_java/ --start-step 3 --retries 5 --log-level INFO</code>
+          </div>
         </div>
       </div>
     </section>
@@ -1679,7 +1840,7 @@ ImportError while importing test file:
 
       <h2>Launch the Migration</h2>
 <pre><span class="cmd">python</span> main.py path/to/java_project/ --retries <span class="num">3</span></pre>
-      <p>The Hub Agent starts all MCP servers, scans for <code>.java</code> files, and begins processing each module in sequence. Output goes to <code>~/output</code> by default.</p>
+      <p>The Hub Agent starts all MCP servers, scans for <code>.java</code> files, and begins processing each module in sequence. Output goes to <code>~/data_code_conversion/java_project/</code> by default (override with <code>--out</code>).</p>
 
       <!-- Stage 1-A -->
       <div class="pipeline-step">
@@ -1697,7 +1858,7 @@ ImportError while importing test file:
             <div class="callout-body">
               <div class="callout-title">Human Review Point — Understand Output</div>
               <div class="callout-text">
-                The analysis is <em>not</em> written to a file you can read directly, but you will see the complexity score printed on screen. If the score seems wrong (e.g. a trivial module scores 0.9), the cause is usually unusual Java idioms. You can inspect the raw analysis by adding a <code>console.print(analysis.model_dump_json(indent=2))</code> call in <code>hub_agent.py:_analyze_and_design()</code> temporarily.
+                The analysis is persisted to <code>~/data_code_conversion/&lt;project&gt;/InvoiceCalculator/InvoiceCalculator_analysis.json</code>. You can open this file to inspect the full structured analysis. You will also see the complexity score printed on screen. If the score seems wrong (e.g. a trivial module scores 0.9), the cause is usually unusual Java idioms.
               </div>
             </div>
           </div>
@@ -1718,7 +1879,7 @@ ImportError while importing test file:
           <p>The <strong>DocumentAgent</strong> converts the JSON analysis into a human-readable Markdown specification.</p>
           <div class="artifact-grid">
             <div class="artifact-card">
-              <div class="artifact-path">output/InvoiceCalculator/InvoiceCalculator_spec.md</div>
+              <div class="artifact-path">~/data_code_conversion/&lt;project&gt;/InvoiceCalculator/InvoiceCalculator_spec.md</div>
               <div class="artifact-desc">Plain-English specification: business rules, inputs/outputs table, error conditions, migration notes. Written to disk by the File System MCP.</div>
             </div>
           </div>
@@ -1727,7 +1888,7 @@ ImportError while importing test file:
             <div class="callout-body">
               <div class="callout-title">Human Review Point — Markdown Spec</div>
               <div class="callout-text">
-                <strong>Open <code>output/InvoiceCalculator/InvoiceCalculator_spec.md</code> in your editor.</strong><br>
+                <strong>Open <code>OUT/InvoiceCalculator/InvoiceCalculator_spec.md</code> in your editor.</strong><br>
                 Check: (1) the numbered business rules are accurate, (2) all Java-specific idioms are noted (null returns, checked exceptions, synchronized blocks),
                 (3) the inputs/outputs table has a row for every public method.<br>
                 If a rule is wrong, edit the spec file directly — the Test Auditor in Step 2 reads this spec to fill coverage gaps.
@@ -1751,7 +1912,7 @@ ImportError while importing test file:
           <p>The <strong>ArchitectAgent</strong> produces a detailed JSON blueprint: dataclasses, type-annotated public API signatures, dependency injection points, and module boundaries.</p>
           <div class="artifact-grid">
             <div class="artifact-card">
-              <div class="artifact-path">output/InvoiceCalculator/InvoiceCalculator_architecture.json</div>
+              <div class="artifact-path">OUT/InvoiceCalculator/InvoiceCalculator_architecture.json</div>
               <div class="artifact-desc">Architecture blueprint — dataclasses, public_api list with full signatures, design_notes, dependency_injection list.</div>
             </div>
           </div>
@@ -1767,7 +1928,7 @@ ImportError while importing test file:
                 You are asked: <em>"Approve spec &amp; architecture? Proceed to test generation? [y/n]"</em><br><br>
                 <strong>Type <code>y</code></strong> to proceed to Step 2.<br>
                 <strong>Type <code>n</code></strong> to mark the module FAILED — fix the Java source, spec, or architecture JSON and re-run.<br><br>
-                To edit before approving: open <code>~/output/InvoiceCalculator/InvoiceCalculator_architecture.json</code>, fix the <code>public_api</code> entries or <code>design_notes</code>, save, then type <code>y</code>.
+                To edit before approving: open <code>~/data_code_conversion/&lt;project&gt;/InvoiceCalculator/InvoiceCalculator_architecture.json</code>, fix the <code>public_api</code> entries or <code>design_notes</code>, save, then type <code>y</code>.
               </div>
             </div>
           </div>
@@ -1788,7 +1949,7 @@ ImportError while importing test file:
           <p>Two test agents run simultaneously, their outputs are merged by the Test Auditor, and the merged file is validated with <code>pytest --collect-only</code>.</p>
           <div class="artifact-grid">
             <div class="artifact-card">
-              <div class="artifact-path">output/InvoiceCalculator/test_InvoiceCalculator.py</div>
+              <div class="artifact-path">~/data_code_conversion/&lt;project&gt;/InvoiceCalculator/test_InvoiceCalculator.py</div>
               <div class="artifact-desc">Merged test suite — functional tests from the spec + golden master tests from I/O data. Validated by dry run before Step 3.</div>
             </div>
           </div>
@@ -1797,7 +1958,7 @@ ImportError while importing test file:
             <div class="callout-body">
               <div class="callout-title">Human Review Point — Test Suite</div>
               <div class="callout-text">
-                <strong>Open <code>output/InvoiceCalculator/test_InvoiceCalculator.py</code></strong><br>
+                <strong>Open <code>OUT/InvoiceCalculator/test_InvoiceCalculator.py</code></strong><br>
                 Check: (1) at least one <code>def test_…</code> per numbered business rule in the spec, (2) boundary values covered, (3) <code>pytest.raises</code> for error conditions, (4) no <code>assert True</code> placeholders.<br><br>
                 You can add or edit tests directly in this file. Changes are picked up by the Converter Agent in Step 3.
               </div>
@@ -1820,7 +1981,7 @@ ImportError while importing test file:
           <p>The Converter generates Python code, mypy validates types, pytest validates behaviour. On failure, the error output is fed back to the Converter for self-correction.</p>
           <div class="artifact-grid">
             <div class="artifact-card">
-              <div class="artifact-path">output/InvoiceCalculator/InvoiceCalculator.py</div>
+              <div class="artifact-path">~/data_code_conversion/&lt;project&gt;/InvoiceCalculator/InvoiceCalculator.py</div>
               <div class="artifact-desc">Final migrated Python module — fully type-annotated, all tests pass, ready for your target repository.</div>
             </div>
           </div>
@@ -1857,10 +2018,10 @@ ImportError while importing test file:
       <table>
         <thead><tr><th>#</th><th>Stage</th><th>Entry point in code</th><th>Output artifact</th><th>Human action?</th></tr></thead>
         <tbody>
-          <tr><td>1A</td><td>Understand Java</td><td><code>UnderstandAgent().run(source_code, name, path)</code></td><td>In-memory <code>AnalysisResult</code></td><td>No (automatic)</td></tr>
-          <tr><td>1B</td><td>Write Markdown spec</td><td><code>DocumentAgent().run(analysis, spec_path)</code></td><td><code>{module}_spec.md</code></td><td>No (automatic)</td></tr>
-          <tr><td>1C</td><td>Design architecture</td><td><code>ArchitectAgent().run(analysis, spec, arch_path)</code></td><td><code>{module}_architecture.json</code></td><td><strong>Mandatory gate</strong> — approve/reject spec &amp; architecture</td></tr>
-          <tr><td>2</td><td>Generate tests (parallel)</td><td><code>asyncio.gather(FunctionalTestsAgent, GoldenMasterAgent)</code></td><td><code>test_{module}.py</code></td><td><strong>Mandatory gate</strong> — approve/reject test suite</td></tr>
+          <tr><td>1A</td><td>Understand Java</td><td><code>UnderstandAgent().run(source_code, name, path)</code></td><td><code>{module}_analysis.json</code> (persisted)</td><td>No (automatic) — skip with <code>--start-step 1b</code></td></tr>
+          <tr><td>1B</td><td>Write Markdown spec</td><td><code>DocumentAgent().run(analysis, spec_path)</code></td><td><code>{module}_spec.md</code></td><td>No (automatic) — skip with <code>--start-step 1c</code></td></tr>
+          <tr><td>1C</td><td>Design architecture</td><td><code>ArchitectAgent().run(analysis, spec, arch_path)</code></td><td><code>{module}_architecture.json</code></td><td><strong>Mandatory gate</strong> — approve/reject spec &amp; architecture — skip with <code>--start-step 2</code></td></tr>
+          <tr><td>2</td><td>Generate tests (parallel)</td><td><code>asyncio.gather(FunctionalTestsAgent, GoldenMasterAgent)</code></td><td><code>test_{module}.py</code></td><td><strong>Mandatory gate</strong> — approve/reject test suite — skip with <code>--start-step 3</code></td></tr>
           <tr><td>3</td><td>Convert &amp; verify loop</td><td><code>ConverterAgent(vectordb).run(design, test_suite, py_path)</code></td><td><code>{module}.py</code></td><td><strong>Mandatory gate</strong> — approve/reject generated code &amp; PR</td></tr>
         </tbody>
       </table>
@@ -1971,7 +2132,7 @@ design = ArchitectAgent().run(analysis, spec, <span class="str">"output/InvoiceC
         <div class="callout-body">
           <div class="callout-title">Human gate is already built in</div>
           <div class="callout-text">
-            The architecture review gate (<code>HubAgent._human_gate()</code> in <code>agents/hub_agent.py:323</code>) already pauses the pipeline for human input. All three options above simply replace the <code>rich.Confirm.ask()</code> call with a richer input mechanism — the surrounding logic stays the same.
+            The architecture review gate (<code>HubAgent._human_gate()</code> in <code>agents/hub_agent.py:482</code>) already pauses the pipeline for human input. All three options above simply replace the <code>rich.Confirm.ask()</code> call with a richer input mechanism — the surrounding logic stays the same.
           </div>
         </div>
       </div>
