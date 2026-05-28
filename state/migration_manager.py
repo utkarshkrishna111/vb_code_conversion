@@ -72,4 +72,4 @@ class MigrationManager:
 
     def _persist(self) -> None:
         if self._state_file:
-            self._state_file.write_text(self.state.model_dump_json(indent=2))
+            self._state_file.write_text(self.state.model_dump_json(indent=2), encoding="utf-8")
