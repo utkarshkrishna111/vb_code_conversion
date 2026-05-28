@@ -302,17 +302,46 @@ $MaxRetries = if ($r) { $r } else { "3" }
 $l = Read-Host "  Log level (DEBUG/INFO/WARNING) [DEBUG]"
 $LogLevel = if ($l) { $l.ToUpper() } else { "DEBUG" }
 
+Write-Host ""
+Write-Host "  Use Ollama for translation memory embeddings?"
+Write-Host "  Y  -- Real semantic similarity (requires Ollama running locally)"
+Write-Host "  N  -- Hash fallback, no Ollama needed (default)"
+Write-Host ""
+
+$OllamaEmbedModel = ""
+$OllamaBaseUrl    = "http://localhost:11434"
+$oeDone = $false
+
+while (-not $oeDone) {
+    $oe = (Read-Host "  Use Ollama embeddings? [Y/N] (default N)").ToUpper().Trim()
+    if ($oe -eq "Y") {
+        $ourl = Read-Host "  Ollama base URL [http://localhost:11434]"
+        $OllamaBaseUrl = if ($ourl) { $ourl } else { "http://localhost:11434" }
+        $omodel = Read-Host "  Embedding model [nomic-embed-text]"
+        $OllamaEmbedModel = if ($omodel) { $omodel } else { "nomic-embed-text" }
+        $oeDone = $true
+    } elseif ($oe -eq "N" -or $oe -eq "") {
+        $OllamaEmbedModel = ""
+        $oeDone = $true
+    } else {
+        Write-Host "  Please enter Y or N" -ForegroundColor Yellow
+    }
+}
+
+$EmbedDisplay = if ($OllamaEmbedModel) { $OllamaEmbedModel } else { "hash (no Ollama)" }
+
 # ==============================================================================
 # Summary & launch
 # ==============================================================================
 Write-Host ""
 HR
 Write-Host ""
-Write-Host "  Source      : " -NoNewline; Write-Host $SourceDir  -ForegroundColor White
-Write-Host "  Output      : " -NoNewline; Write-Host $OutputDir  -ForegroundColor White
-Write-Host "  Start step  : " -NoNewline; Write-Host $StartStep  -ForegroundColor White
-Write-Host "  Max retries : " -NoNewline; Write-Host $MaxRetries -ForegroundColor White
-Write-Host "  Log level   : " -NoNewline; Write-Host $LogLevel   -ForegroundColor White
+Write-Host "  Source      : " -NoNewline; Write-Host $SourceDir    -ForegroundColor White
+Write-Host "  Output      : " -NoNewline; Write-Host $OutputDir    -ForegroundColor White
+Write-Host "  Start step  : " -NoNewline; Write-Host $StartStep    -ForegroundColor White
+Write-Host "  Max retries : " -NoNewline; Write-Host $MaxRetries   -ForegroundColor White
+Write-Host "  Log level   : " -NoNewline; Write-Host $LogLevel     -ForegroundColor White
+Write-Host "  Embeddings  : " -NoNewline; Write-Host $EmbedDisplay -ForegroundColor White
 Write-Host ""
 HR
 Write-Host ""
@@ -333,6 +362,9 @@ while (-not $launchDone) {
 
 Write-Host ""
 Set-Location $ScriptDir
+
+$env:OLLAMA_EMBED_MODEL = $OllamaEmbedModel
+$env:OLLAMA_BASE_URL    = $OllamaBaseUrl
 
 & $Python main.py $SourceDir `
     --start-step $StartStep `

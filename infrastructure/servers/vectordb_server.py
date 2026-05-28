@@ -42,9 +42,10 @@ def _init_qdrant(use_memory: bool) -> None:
 
         existing = {c.name for c in _client.get_collections().collections}
         if _COLLECTION not in existing:
+            _embed("__dim_probe__")  # populates _EMBED_DIM before collection is created
             _client.create_collection(
                 collection_name=_COLLECTION,
-                vectors_config=VectorParams(size=128, distance=Distance.COSINE),
+                vectors_config=VectorParams(size=_EMBED_DIM, distance=Distance.COSINE),
             )
         _available = True
         sys.stderr.write("VectorDB ready\n")
@@ -116,9 +117,33 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
     raise ValueError(f"Unknown tool: {name}")
 
 
+_EMBED_DIM: int = 128  # updated on first Ollama call
+
+
 def _embed(text: str) -> list[float]:
-    # Deterministic 128-dim hash embedding.
-    # Replace with a real model (e.g. sentence-transformers) in production.
+    global _EMBED_DIM
+    if Config.OLLAMA_EMBED_MODEL:
+        try:
+            import urllib.request
+            import json as _json
+            payload = _json.dumps({
+                "model": Config.OLLAMA_EMBED_MODEL,
+                "prompt": text,
+            }).encode()
+            req = urllib.request.Request(
+                f"{Config.OLLAMA_BASE_URL}/api/embeddings",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                embedding = _json.loads(resp.read())["embedding"]
+            _EMBED_DIM = len(embedding)
+            return embedding
+        except Exception as exc:
+            sys.stderr.write(f"Ollama embedding failed, falling back to hash: {exc}\n")
+
+    # Deterministic 128-dim hash placeholder
     digest = hashlib.sha512(text.encode()).digest()
     return [(b - 128) / 128.0 for b in digest]
 

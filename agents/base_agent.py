@@ -52,6 +52,8 @@ class BaseAgent(ABC):
             "messages":   all_messages,
             "max_tokens": max_tokens,
         }
+        if Config.LLM_API_BASE:
+            kwargs["api_base"] = Config.LLM_API_BASE
         if tools:
             kwargs["tools"] = tools
             self.logger.debug(f"Tools attached: {[t.get('name', '?') for t in tools]}")

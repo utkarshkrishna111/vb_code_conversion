@@ -240,6 +240,29 @@ MAX_RETRIES=3
 read -rp "  Log level (DEBUG/INFO/WARNING) [INFO]: " _l
 LOG_LEVEL="${_l:-INFO}"
 
+printf '\n'
+printf '  Use Ollama for translation memory embeddings?\n'
+printf '  %s  Yes — real semantic similarity (requires Ollama running locally)\n' "$(bold 'Y')"
+printf '  %s  No  — hash fallback, no Ollama needed (default)\n\n'               "$(bold 'N')"
+
+OLLAMA_EMBED_MODEL=""
+OLLAMA_BASE_URL="http://localhost:11434"
+
+while true; do
+    read -rp "  Use Ollama embeddings? [Y/N] (default N): " _oe
+    case "${_oe^^}" in
+        Y)
+            read -rp "  Ollama base URL [http://localhost:11434]: " _ourl
+            OLLAMA_BASE_URL="${_ourl:-http://localhost:11434}"
+            read -rp "  Embedding model [nomic-embed-text]: " _omodel
+            OLLAMA_EMBED_MODEL="${_omodel:-nomic-embed-text}"
+            break
+            ;;
+        N|"")  OLLAMA_EMBED_MODEL=""; break ;;
+        *)  printf '  %s\n' "$(yellow 'Enter Y or N')" ;;
+    esac
+done
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Summary & launch
 # ══════════════════════════════════════════════════════════════════════════════
@@ -251,6 +274,7 @@ printf '  %-14s %s\n' 'Output:'      "$(bold "$OUTPUT_DIR")"
 printf '  %-14s %s\n' 'Start step:'  "$(bold "$START_STEP")"
 printf '  %-14s %s\n' 'Max retries:' "$(bold "$MAX_RETRIES")"
 printf '  %-14s %s\n' 'Log level:'   "$(bold "$LOG_LEVEL")"
+printf '  %-14s %s\n' 'Embeddings:'  "$(bold "${OLLAMA_EMBED_MODEL:-hash (no Ollama)}")"
 printf '\n'
 hr
 printf '\n'
@@ -267,6 +291,8 @@ done
 
 printf '\n'
 cd "$SCRIPT_DIR"
+export OLLAMA_EMBED_MODEL
+export OLLAMA_BASE_URL
 exec python3 main.py "$SOURCE_DIR" \
     --start-step "$START_STEP" \
     --retries    "$MAX_RETRIES" \

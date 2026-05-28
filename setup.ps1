@@ -132,16 +132,37 @@ Write-Host ""
 $choice = Read-Host "Enter choice [1-3]"
 
 switch ($choice) {
-    "1" { $provider = "anthropic"; $apiKey = Read-Host "Anthropic API key (sk-ant-...)" -AsSecureString; $keyVar = "ANTHROPIC_API_KEY" }
-    "2" { $provider = "copilot";   $apiKey = Read-Host "GitHub Copilot token (ghp_... or ghu_...)" -AsSecureString; $keyVar = "GITHUB_COPILOT_TOKEN" }
-    "3" { $provider = "openai";    $apiKey = Read-Host "OpenAI API key (sk-...)" -AsSecureString; $keyVar = "OPENAI_API_KEY" }
+    "1" { $provider = "anthropic"; $keyVar = "ANTHROPIC_API_KEY" }
+    "2" { $provider = "copilot";   $keyVar = "GITHUB_COPILOT_TOKEN" }
+    "3" { $provider = "openai";    $keyVar = "OPENAI_API_KEY" }
     default { Fail "Invalid choice." }
+}
+
+# -- Endpoint selection --------------------------------------------------------
+Write-Host ""
+Write-Host "Endpoint type:" -ForegroundColor White
+Write-Host "  1) Personal  -- use the provider's standard API endpoint"
+Write-Host "  2) Company   -- use a company proxy / custom endpoint URL"
+Write-Host ""
+$endpointChoice = Read-Host "Enter choice [1-2]"
+
+$llmApiBase = ""
+if ($endpointChoice -eq "1") {
+    $apiKey = Read-Host "API key" -AsSecureString
+} elseif ($endpointChoice -eq "2") {
+    $llmApiBase = Read-Host "Company endpoint URL (e.g. https://proxy.company.com/v1)"
+    if ([string]::IsNullOrWhiteSpace($llmApiBase)) { Fail "Endpoint URL cannot be empty." }
+    $apiKey = Read-Host "API key" -AsSecureString
+} else {
+    Fail "Invalid choice."
 }
 
 $plainKey = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($apiKey)
 )
 if ([string]::IsNullOrWhiteSpace($plainKey)) { Fail "API key cannot be empty." }
+
+$apiBaseLine = if ($llmApiBase) { "LLM_API_BASE=$llmApiBase" } else { "" }
 
 # -- Write .env ----------------------------------------------------------------
 Info "Writing $ENV_FILE..."
@@ -150,6 +171,7 @@ Info "Writing $ENV_FILE..."
 
 LLM_PROVIDER=$provider
 $keyVar=$plainKey
+$apiBaseLine
 
 # Optional: override default models
 # AGENT_MODEL=

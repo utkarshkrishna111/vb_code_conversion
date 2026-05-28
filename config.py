@@ -37,6 +37,14 @@ class Config:
     GEMINI_API_KEY: str    = os.getenv("GEMINI_API_KEY", "")
     GITHUB_COPILOT_TOKEN: str = os.getenv("GITHUB_COPILOT_TOKEN", "")
 
+    # Custom endpoint — set when using a company proxy instead of the provider's default URL.
+    # LiteLLM passes this as api_base; leave empty to use the provider's standard endpoint.
+    LLM_API_BASE: str = os.getenv("LLM_API_BASE", "")
+
+    # Ollama — used only for vectordb embeddings (translation memory)
+    OLLAMA_BASE_URL: str    = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    OLLAMA_EMBED_MODEL: str = os.getenv("OLLAMA_EMBED_MODEL", "")  # empty = hash fallback
+
     # Models — defaults come from the table above; override per-agent in .env
     AGENT_MODEL: str = os.getenv(
         "AGENT_MODEL", _DEFAULTS.get(os.getenv("LLM_PROVIDER", "anthropic").lower(), _DEFAULTS["anthropic"])["agent"]
