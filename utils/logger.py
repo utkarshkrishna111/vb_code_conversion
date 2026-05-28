@@ -6,7 +6,20 @@ from pathlib import Path
 from rich.logging import RichHandler
 
 
-def setup_logging() -> None:
+def _next_run_number(log_dir: Path, project_name: str, date_str: str) -> int:
+    prefix = f"{project_name}_{date_str}_"
+    existing = [
+        p.stem for p in log_dir.glob(f"{prefix}*.log")
+    ]
+    nums = []
+    for stem in existing:
+        suffix = stem[len(prefix):]
+        if suffix.isdigit():
+            nums.append(int(suffix))
+    return max(nums, default=0) + 1
+
+
+def setup_logging(project_name: str = "code_conversion") -> None:
     from config import Config
 
     # Read at call time so --log-level CLI flag (set via os.environ) takes effect
@@ -16,7 +29,9 @@ def setup_logging() -> None:
     log_dir = Path(Config.LOG_FOLDER)
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    log_file = log_dir / f"code_conversion_{date.today().strftime('%Y_%m_%d')}.log"
+    date_str = date.today().strftime("%Y_%m_%d")
+    run_num = _next_run_number(log_dir, project_name, date_str)
+    log_file = log_dir / f"{project_name}_{date_str}_{run_num}.log"
 
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(level)

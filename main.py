@@ -56,9 +56,9 @@ def migrate(
     if log_level:
         os.environ["LOG_LEVEL"] = log_level.upper()
 
-    setup_logging()
-
     resolved_source = source_dir.resolve()
+
+    setup_logging(project_name=resolved_source.name)
     resolved_output = (
         output_dir.resolve()
         if output_dir is not None
